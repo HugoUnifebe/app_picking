@@ -38,6 +38,7 @@ class DatabaseHelper {
         codigo_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT,
         email TEXT,
+        codigo_barra_usuario TEXT,
         codigo_tipo INTEGER,
         ativo INTEGER NOT NULL DEFAULT 1,
         criado_em TEXT,
