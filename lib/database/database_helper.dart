@@ -25,13 +25,17 @@ class DatabaseHelper {
   }
 
   Future _onCreate(Database db, int version) async {
-    // Tabela Usuario Tipo (Originalmente chamada de pedido no SQL enviado)
+    // Tabela Usuario Tipo
     await db.execute('''
       CREATE TABLE usuario_tipo (
         codigo_tipo INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT
       )
     ''');
+
+    // Inserir tipos iniciais
+    await db.insert('usuario_tipo', {'nome': 'Supervisor'});
+    await db.insert('usuario_tipo', {'nome': 'Operador'});
 
     await db.execute('''
       CREATE TABLE usuario (
@@ -46,6 +50,26 @@ class DatabaseHelper {
         FOREIGN KEY (codigo_tipo) REFERENCES usuario_tipo(codigo_tipo)
       )
     ''');
+
+    // Inserir usuário administrador inicial
+    await db.insert('usuario', {
+      'nome': 'administrador',
+      'email': 'admin@picking.com',
+      'codigo_barra_usuario': '1234',
+      'codigo_tipo': 1, // Supervisor
+      'ativo': 1,
+      'criado_em': DateTime.now().toIso8601String(),
+    });
+
+    // Inserir usuário operador inicial
+    await db.insert('usuario', {
+      'nome': 'operador',
+      'email': 'operador@picking.com',
+      'codigo_barra_usuario': '5678',
+      'codigo_tipo': 2, // Operador
+      'ativo': 1,
+      'criado_em': DateTime.now().toIso8601String(),
+    });
 
     await db.execute('''
       CREATE TABLE logs (
@@ -105,6 +129,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE produto (
         codigo_produto INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo_barra_produto TEXT,
         sku TEXT,
         cor TEXT,
         tamanho TEXT,
