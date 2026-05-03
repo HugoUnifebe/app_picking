@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/main_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF003399), // Azul escuro corporativo
+          seedColor: const Color(0xFF003399),
           primary: const Color(0xFF003399),
         ),
         useMaterial3: true,
@@ -30,7 +30,11 @@ class MyApp extends StatelessWidget {
           fillColor: Color(0xFFF5F5F5),
         ),
       ),
-      home: const MainScreen(),
+      // Definimos rotas para facilitar o logout
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+      },
     );
   }
 }
