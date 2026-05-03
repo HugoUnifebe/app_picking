@@ -87,6 +87,11 @@ class DatabaseHelper {
       )
     ''');
 
+    // Pre-cadastrar status de caixa
+    await db.insert('status_caixa', {'descricao': 'Livre', 'cor_hex': '4CAF50'}); // Verde
+    await db.insert('status_caixa', {'descricao': 'Ocupada', 'cor_hex': 'F44336'}); // Vermelho
+    await db.insert('status_caixa', {'descricao': 'Inativa', 'cor_hex': 'FFFFFF'}); // Branco
+
     await db.execute('''
       CREATE TABLE caixa (
         codigo_caixa INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,6 +110,11 @@ class DatabaseHelper {
         cor_hex TEXT
       )
     ''');
+
+    // Pre-cadastrar status de pedido
+    await db.insert('status_pedido', {'descricao': 'Pendente', 'cor_hex': 'FFA500'});
+    await db.insert('status_pedido', {'descricao': 'Em Separação', 'cor_hex': '0000FF'});
+    await db.insert('status_pedido', {'descricao': 'Finalizado', 'cor_hex': '008000'});
 
     await db.execute('''
       CREATE TABLE pedido (
@@ -126,9 +136,15 @@ class DatabaseHelper {
       )
     ''');
 
+    // Pre-cadastrar status de produto_pedido
+    await db.insert('status_produto_pedido', {'descricao': 'Pendente', 'cor_hex': 'FFA500'});
+    await db.insert('status_produto_pedido', {'descricao': 'Coletado', 'cor_hex': '008000'});
+    await db.insert('status_produto_pedido', {'descricao': 'Indisponível', 'cor_hex': 'FF0000'});
+
     await db.execute('''
       CREATE TABLE produto (
         codigo_produto INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome_produto TEXT NOT NULL,
         codigo_barra_produto TEXT,
         sku TEXT,
         cor TEXT,

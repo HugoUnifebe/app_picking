@@ -1,5 +1,6 @@
 class Produto {
   final int? codigoProduto;
+  final String nomeProduto;
   final String? codigoBarraProduto;
   final String sku;
   final String cor;
@@ -10,6 +11,7 @@ class Produto {
 
   Produto({
     this.codigoProduto,
+    required this.nomeProduto,
     this.codigoBarraProduto,
     required this.sku,
     required this.cor,
@@ -22,6 +24,7 @@ class Produto {
   Map<String, dynamic> toMap() {
     return {
       'codigo_produto': codigoProduto,
+      'nome_produto': nomeProduto,
       'codigo_barra_produto': codigoBarraProduto,
       'sku': sku,
       'cor': cor,
@@ -35,13 +38,14 @@ class Produto {
   factory Produto.fromMap(Map<String, dynamic> map) {
     return Produto(
       codigoProduto: map['codigo_produto'],
+      nomeProduto: map['nome_produto'] ?? '',
       codigoBarraProduto: map['codigo_barra_produto'],
-      sku: map['sku'],
-      cor: map['cor'],
-      tamanho: map['tamanho'],
-      quantidadeDisponivel: map['quantidade_disponivel'],
-      variacao: map['variacao'],
-      localizacao: map['localizacao'],
+      sku: map['sku'] ?? '',
+      cor: map['cor'] ?? '',
+      tamanho: map['tamanho'] ?? '',
+      quantidadeDisponivel: map['quantidade_disponivel'] ?? 0,
+      variacao: map['variacao'] ?? '',
+      localizacao: map['localizacao'] ?? '',
     );
   }
 }

@@ -14,6 +14,7 @@ class ProdutoFormScreen extends StatefulWidget {
 
 class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nomeController = TextEditingController();
   final _barcodeController = TextEditingController();
   final _skuController = TextEditingController();
   final _corController = TextEditingController();
@@ -28,6 +29,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
   void initState() {
     super.initState();
     if (widget.produto != null) {
+      _nomeController.text = widget.produto!.nomeProduto;
       _barcodeController.text = widget.produto!.codigoBarraProduto ?? '';
       _skuController.text = widget.produto!.sku;
       _corController.text = widget.produto!.cor;
@@ -40,6 +42,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
 
   @override
   void dispose() {
+    _nomeController.dispose();
     _barcodeController.dispose();
     _skuController.dispose();
     _corController.dispose();
@@ -54,6 +57,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
     if (_formKey.currentState!.validate()) {
       final produto = Produto(
         codigoProduto: widget.produto?.codigoProduto,
+        nomeProduto: _nomeController.text,
         codigoBarraProduto: _barcodeController.text,
         sku: _skuController.text,
         cor: _corController.text,
@@ -87,6 +91,12 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
           key: _formKey,
           child: Column(
             children: [
+              TextFormField(
+                controller: _nomeController,
+                decoration: const InputDecoration(labelText: 'Nome do Produto', border: OutlineInputBorder()),
+                validator: (value) => value!.isEmpty ? 'Obrigatório' : null,
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _barcodeController,
                 decoration: InputDecoration(

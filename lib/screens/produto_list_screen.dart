@@ -52,8 +52,8 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: ListTile(
-                        title: Text('${produto.sku} - ${produto.cor}'),
-                        subtitle: Text('EAN: ${produto.codigoBarraProduto ?? "N/A"}\nTam: ${produto.tamanho} | Qtd: ${produto.quantidadeDisponivel}\nLoc: ${produto.localizacao}'),
+                        title: Text('${produto.nomeProduto}'),
+                        subtitle: Text('SKU: ${produto.sku} | Cor: ${produto.cor}\nEAN: ${produto.codigoBarraProduto ?? "N/A"}\nTam: ${produto.tamanho} | Qtd: ${produto.quantidadeDisponivel}\nLoc: ${produto.localizacao}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
