@@ -26,7 +26,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
   int? _currentPedidoId;
   int? _selectedStatusId;
   int? _selectedCaixaId;
-  int? _originalCaixaId; // Para saber se a caixa mudou
+  int? _originalCaixaId;
 
   @override
   void initState() {
@@ -47,7 +47,6 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
         _selectedCaixaId = pedidoData['codigo_caixa'];
         _originalCaixaId = _selectedCaixaId;
       }
-      // Carrega caixas livres + a caixa que já pertence a este pedido
       _caixas = await _caixaRepo.getFreeBoxes(includeCaixaId: _selectedCaixaId);
       await _loadItems();
     } else {
@@ -84,7 +83,6 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       final id = await _pedidoRepo.insert(pedido);
       setState(() => _currentPedidoId = id);
       
-      // Marca a nova caixa como 'Ocupado' (ID 2)
       if (_selectedCaixaId != null) {
         await _caixaRepo.updateStatus(_selectedCaixaId!, 2);
       }
@@ -98,16 +96,12 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     } else {
       await _pedidoRepo.update(pedido);
       
-      // Regra: Se o status do pedido mudou para 'Finalizado' (ID 3), libera a caixa
       if (_selectedStatusId == 3 && _selectedCaixaId != null) {
-        await _caixaRepo.updateStatus(_selectedCaixaId!, 1); // 1 = Livre
+        await _caixaRepo.updateStatus(_selectedCaixaId!, 1);
       } else if (_selectedCaixaId != _originalCaixaId) {
-        // Se a caixa foi alterada na edição (lógica que já existia):
-        // 1. Libera a caixa antiga (ID 1 = Livre)
         if (_originalCaixaId != null) {
           await _caixaRepo.updateStatus(_originalCaixaId!, 1);
         }
-        // 2. Ocupa a nova caixa (ID 2 = Ocupado)
         if (_selectedCaixaId != null) {
           await _caixaRepo.updateStatus(_selectedCaixaId!, 2);
         }
@@ -143,17 +137,13 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     );
 
     if (confirm == true && _currentPedidoId != null) {
-      // 1. Libera a caixa se houver uma vinculada
       if (_selectedCaixaId != null) {
         await _caixaRepo.updateStatus(_selectedCaixaId!, 1);
       }
-      
-      // 2. Deleta o pedido (e seus itens)
       await _pedidoRepo.delete(_currentPedidoId!);
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido excluído com sucesso!')));
-        Navigator.pop(context, true); // Volta para a lista e atualiza
+        Navigator.pop(context, true);
       }
     }
   }
@@ -172,19 +162,13 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     if (mounted) {
       showModalBottomSheet(
         context: context,
-        builder: (context) => ListView.builder(
-          itemCount: produtos.length,
-          itemBuilder: (context, index) {
-            final p = produtos[index];
-            return ListTile(
-              title: Text(p.nomeProduto),
-              subtitle: Text('${p.sku} | Cor: ${p.cor}'),
-              onTap: () async {
-                await _pedidoRepo.addItem(_currentPedidoId!, p.codigoProduto!);
-                if (mounted) Navigator.pop(context);
-                _loadItems();
-              },
-            );
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _SeletorProdutoModal(
+          produtos: produtos,
+          onSelected: (produtoId) async {
+            await _pedidoRepo.addItem(_currentPedidoId!, produtoId);
+            _loadItems();
           },
         ),
       );
@@ -350,6 +334,91 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
         onPressed: _adicionarProduto,
         icon: const Icon(Icons.add_shopping_cart),
         label: const Text('ADICIONAR PRODUTO'),
+      ),
+    );
+  }
+}
+
+// --- Widget Interno para o Modal de Seleção de Produtos com Filtro ---
+class _SeletorProdutoModal extends StatefulWidget {
+  final List<dynamic> produtos;
+  final Function(int) onSelected;
+
+  const _SeletorProdutoModal({required this.produtos, required this.onSelected});
+
+  @override
+  State<_SeletorProdutoModal> createState() => _SeletorProdutoModalState();
+}
+
+class _SeletorProdutoModalState extends State<_SeletorProdutoModal> {
+  final _searchController = TextEditingController();
+  List<dynamic> _filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.produtos;
+  }
+
+  void _filter(String q) {
+    setState(() {
+      _filtered = widget.produtos.where((p) {
+        final query = q.toLowerCase();
+        return p.nomeProduto.toLowerCase().contains(query) || 
+               (p.sku ?? '').toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+          ),
+          const Text('Selecione o Produto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _searchController,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Filtrar por nome ou SKU...',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+            ),
+            onChanged: _filter,
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _filtered.isEmpty
+              ? const Center(child: Text('Nenhum produto encontrado.'))
+              : ListView.builder(
+                  itemCount: _filtered.length,
+                  itemBuilder: (context, index) {
+                    final p = _filtered[index];
+                    return ListTile(
+                      title: Text(p.nomeProduto),
+                      subtitle: Text('${p.sku} | Cor: ${p.cor}'),
+                      onTap: () {
+                        widget.onSelected(p.codigoProduto!);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+          ),
+        ],
       ),
     );
   }
