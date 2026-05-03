@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'produto_list_screen.dart';
 import 'caixa_list_screen.dart';
 import 'pedido_list_screen.dart';
+import 'usuario_list_screen.dart';
 
 class CadastrosMenuScreen extends StatelessWidget {
   const CadastrosMenuScreen({super.key});
@@ -15,6 +16,15 @@ class CadastrosMenuScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildMenuTile(
+            context,
+            icon: Icons.people,
+            title: 'Usuários',
+            subtitle: 'Gerenciar permissões e crachás',
+            color: Colors.purple,
+            destination: const UsuarioListScreen(),
+          ),
+          const SizedBox(height: 12),
           _buildMenuTile(
             context,
             icon: Icons.inventory_2,

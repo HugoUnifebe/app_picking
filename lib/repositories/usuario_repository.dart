@@ -35,4 +35,42 @@ class UsuarioRepository {
     }
     return null;
   }
+
+  // --- CRUD GERAL ---
+
+  Future<List<Map<String, dynamic>>> getAll() async {
+    final db = await _dbHelper.database;
+    return await db.rawQuery('''
+      SELECT u.*, ut.nome as tipo_nome 
+      FROM usuario u
+      JOIN usuario_tipo ut ON u.codigo_tipo = ut.codigo_tipo
+      ORDER BY u.nome ASC
+    ''');
+  }
+
+  Future<Map<String, dynamic>?> getById(int id) async {
+    final db = await _dbHelper.database;
+    final results = await db.query('usuario', where: 'codigo_usuario = ?', whereArgs: [id]);
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  Future<int> insert(Usuario usuario) async {
+    final db = await _dbHelper.database;
+    return await db.insert('usuario', usuario.toMap());
+  }
+
+  Future<int> update(Usuario usuario) async {
+    final db = await _dbHelper.database;
+    return await db.update(
+      'usuario',
+      usuario.toMap(),
+      where: 'codigo_usuario = ?',
+      whereArgs: [usuario.codigoUsuario],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getTipos() async {
+    final db = await _dbHelper.database;
+    return await db.query('usuario_tipo');
+  }
 }

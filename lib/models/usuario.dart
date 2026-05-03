@@ -1,20 +1,20 @@
 class Usuario {
   final int? codigoUsuario;
-  final String nome;
-  final String email;
+  final String? nome;
+  final String? email;
   final String? codigoBarraUsuario;
   final int? codigoTipo;
-  final bool ativo;
-  final DateTime? criadoEm;
-  final DateTime? editadoEm;
+  final int? ativo; // 0 ou 1 para o SQLite
+  final String? criadoEm;
+  final String? editadoEm;
 
   Usuario({
     this.codigoUsuario,
-    required this.nome,
-    required this.email,
+    this.nome,
+    this.email,
     this.codigoBarraUsuario,
     this.codigoTipo,
-    this.ativo = true,
+    this.ativo = 1,
     this.criadoEm,
     this.editadoEm,
   });
@@ -26,9 +26,9 @@ class Usuario {
       'email': email,
       'codigo_barra_usuario': codigoBarraUsuario,
       'codigo_tipo': codigoTipo,
-      'ativo': ativo ? 1 : 0,
-      'criado_em': criadoEm?.toIso8601String(),
-      'editado_em': editadoEm?.toIso8601String(),
+      'ativo': ativo,
+      'criado_em': criadoEm,
+      'editado_em': editadoEm,
     };
   }
 
@@ -39,9 +39,9 @@ class Usuario {
       email: map['email'],
       codigoBarraUsuario: map['codigo_barra_usuario'],
       codigoTipo: map['codigo_tipo'],
-      ativo: map['ativo'] == 1,
-      criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : null,
-      editadoEm: map['editado_em'] != null ? DateTime.parse(map['editado_em']) : null,
+      ativo: map['ativo'],
+      criadoEm: map['criado_em'],
+      editadoEm: map['editado_em'],
     );
   }
 }
