@@ -12,8 +12,12 @@ class ProdutoListScreen extends StatefulWidget {
 
 class _ProdutoListScreenState extends State<ProdutoListScreen> {
   final ProdutoRepository _repository = ProdutoRepository();
-  List<Produto> _produtos = [];
+  List<Produto> _allProdutos = [];
+  List<Produto> _filteredProdutos = [];
   bool _isLoading = true;
+
+  // Filtros
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -25,14 +29,51 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
     setState(() => _isLoading = true);
     final data = await _repository.getAll();
     setState(() {
-      _produtos = data;
+      _allProdutos = data;
+      _applyFilters();
       _isLoading = false;
     });
   }
 
-  void _deleteProduto(int id) async {
-    await _repository.delete(id);
-    _refreshList();
+  void _applyFilters() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredProdutos = _allProdutos.where((produto) {
+        final matchNome = (produto.nomeProduto).toLowerCase().contains(query);
+        final matchSku = (produto.sku ?? '').toLowerCase().contains(query);
+        return matchNome || matchSku;
+      }).toList();
+    });
+  }
+
+  Future<void> _confirmarExclusao(Produto produto) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir Produto'),
+        content: Text('Deseja realmente excluir o produto "${produto.nomeProduto}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('EXCLUIR', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && produto.codigoProduto != null) {
+      await _repository.delete(produto.codigoProduto!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Produto excluído com sucesso!')),
+        );
+        _refreshList();
+      }
+    }
   }
 
   @override
@@ -41,42 +82,72 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
       appBar: AppBar(
         title: const Text('Produtos'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _produtos.isEmpty
-              ? const Center(child: Text('Nenhum produto cadastrado.'))
-              : ListView.builder(
-                  itemCount: _produtos.length,
-                  itemBuilder: (context, index) {
-                    final produto = _produtos[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        title: Text('${produto.nomeProduto}'),
-                        subtitle: Text('SKU: ${produto.sku} | Cor: ${produto.cor}\nEAN: ${produto.codigoBarraProduto ?? "N/A"}\nTam: ${produto.tamanho} | Qtd: ${produto.quantidadeDisponivel}\nLoc: ${produto.localizacao}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => ProdutoFormScreen(produto: produto)),
-                                );
-                                if (result == true) _refreshList();
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _showDeleteDialog(produto),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+      body: Column(
+        children: [
+          // --- Barra de Filtros ---
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.white,
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Buscar por nome ou SKU...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
                 ),
+              ),
+              onChanged: (_) => _applyFilters(),
+            ),
+          ),
+          const Divider(height: 1),
+          
+          // --- Lista ---
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredProdutos.isEmpty
+                    ? const Center(child: Text('Nenhum produto encontrado.'))
+                    : ListView.builder(
+                        itemCount: _filteredProdutos.length,
+                        itemBuilder: (context, index) {
+                          final produto = _filteredProdutos[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: ListTile(
+                              leading: const CircleAvatar(
+                                child: Icon(Icons.shopping_bag),
+                              ),
+                              title: Text(produto.nomeProduto),
+                              subtitle: Text('SKU: ${produto.sku} | Local: ${produto.localizacao ?? "S/N"}'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ProdutoFormScreen(produto: produto),
+                                        ),
+                                      );
+                                      if (result == true) _refreshList();
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _confirmarExclusao(produto),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(
@@ -86,26 +157,6 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
           if (result == true) _refreshList();
         },
         child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(Produto produto) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir Produto'),
-        content: Text('Deseja realmente excluir o produto ${produto.sku}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
-          TextButton(
-            onPressed: () {
-              _deleteProduto(produto.codigoProduto!);
-              Navigator.pop(context);
-            },
-            child: const Text('EXCLUIR', style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
   }
