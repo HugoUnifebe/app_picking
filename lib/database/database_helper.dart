@@ -50,22 +50,20 @@ class DatabaseHelper {
       )
     ''');
 
-    // Inserir usuário supervisor conforme solicitado
     await db.insert('usuario', {
       'nome': 'Supervisor',
       'email': 'supervisor@picking.com',
       'codigo_barra_usuario': '1234567899992',
-      'codigo_tipo': 1, // Supervisor
+      'codigo_tipo': 1,
       'ativo': 1,
       'criado_em': DateTime.now().toIso8601String(),
     });
 
-    // Inserir usuário operador conforme solicitado
     await db.insert('usuario', {
       'nome': 'Operador',
       'email': 'operador@picking.com',
       'codigo_barra_usuario': '9876543211118',
-      'codigo_tipo': 2, // Operador
+      'codigo_tipo': 2,
       'ativo': 1,
       'criado_em': DateTime.now().toIso8601String(),
     });
@@ -86,10 +84,9 @@ class DatabaseHelper {
       )
     ''');
 
-    // Pre-cadastrar status de caixa
-    await db.insert('status_caixa', {'descricao': 'Livre', 'cor_hex': '4CAF50'}); // Verde
-    await db.insert('status_caixa', {'descricao': 'Ocupado', 'cor_hex': 'F44336'}); // Vermelho
-    await db.insert('status_caixa', {'descricao': 'Desativado', 'cor_hex': 'FFFFFF'}); // Branco
+    await db.insert('status_caixa', {'descricao': 'Livre', 'cor_hex': '4CAF50'});
+    await db.insert('status_caixa', {'descricao': 'Ocupado', 'cor_hex': 'F44336'});
+    await db.insert('status_caixa', {'descricao': 'Desativado', 'cor_hex': 'FFFFFF'});
 
     await db.execute('''
       CREATE TABLE caixa (
@@ -111,8 +108,8 @@ class DatabaseHelper {
       )
     ''');
 
-    await db.insert('status_pedido', {'descricao': 'Pendente', 'cor_hex': 'FFA500'});
-    await db.insert('status_pedido', {'descricao': 'Em Separação', 'cor_hex': '0000FF'});
+    await db.insert('status_pedido', {'descricao': 'Aguardando início de picking', 'cor_hex': 'FFA500'});
+    await db.insert('status_pedido', {'descricao': 'Em andamento', 'cor_hex': '0000FF'});
     await db.insert('status_pedido', {'descricao': 'Finalizado', 'cor_hex': '008000'});
 
     await db.execute('''
@@ -120,10 +117,12 @@ class DatabaseHelper {
         codigo_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
         codigo_usuario_responsavel INTEGER,
         codigo_status_pedido INTEGER,
+        codigo_caixa INTEGER,
         criado_em TEXT,
         editado_em TEXT,
         FOREIGN KEY (codigo_status_pedido) REFERENCES status_pedido(codigo_status_pedido),
-        FOREIGN KEY (codigo_usuario_responsavel) REFERENCES usuario(codigo_usuario)
+        FOREIGN KEY (codigo_usuario_responsavel) REFERENCES usuario(codigo_usuario),
+        FOREIGN KEY (codigo_caixa) REFERENCES caixa(codigo_caixa)
       )
     ''');
 
@@ -135,9 +134,9 @@ class DatabaseHelper {
       )
     ''');
 
-    await db.insert('status_produto_pedido', {'descricao': 'Pendente', 'cor_hex': 'FFA500'});
-    await db.insert('status_produto_pedido', {'descricao': 'Coletado', 'cor_hex': '008000'});
-    await db.insert('status_produto_pedido', {'descricao': 'Indisponível', 'cor_hex': 'FF0000'});
+    await db.insert('status_produto_pedido', {'descricao': 'Não está na caixa', 'cor_hex': 'FFFFFF'}); // Branco
+    await db.insert('status_produto_pedido', {'descricao': 'Na caixa', 'cor_hex': 'FFD700'});        // Amarelo/Dourado
+    await db.insert('status_produto_pedido', {'descricao': 'Entregue', 'cor_hex': '4CAF50'});        // Verde
 
     await db.execute('''
       CREATE TABLE produto (
@@ -155,10 +154,11 @@ class DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE produto_pedido (
-        codigo_produto_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo_produto_pedido INTEGER,
         codigo_pedido INTEGER,
         codigo_produto INTEGER,
         codigo_status_produto_pedido INTEGER,
+        PRIMARY KEY (codigo_produto_pedido, codigo_pedido, codigo_produto),
         FOREIGN KEY (codigo_pedido) REFERENCES pedido(codigo_pedido),
         FOREIGN KEY (codigo_produto) REFERENCES produto(codigo_produto),
         FOREIGN KEY (codigo_status_produto_pedido) REFERENCES status_produto_pedido(codigo_status_produto_pedido)

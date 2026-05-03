@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _handleLogin,
                     icon: const Icon(Icons.qr_code_scanner, size: 28),
-                    label: const Text('ESCANEARE CRACHÁ', style: TextStyle(fontSize: 18)),
+                    label: const Text('ESCANEAR CRACHÁ', style: TextStyle(fontSize: 18)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF003399),
                       foregroundColor: Colors.white,

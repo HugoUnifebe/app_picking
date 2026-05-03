@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'produto_list_screen.dart';
 import 'caixa_list_screen.dart';
+import 'pedido_list_screen.dart';
 
 class CadastrosMenuScreen extends StatelessWidget {
   const CadastrosMenuScreen({super.key});
@@ -38,7 +39,7 @@ class CadastrosMenuScreen extends StatelessWidget {
             title: 'Pedidos',
             subtitle: 'Visualizar e criar novos pedidos de picking',
             color: Colors.green,
-            destination: const PlaceholderScreen(title: 'Pedidos'),
+            destination: const PedidoListScreen(),
           ),
           const SizedBox(height: 12),
           _buildMenuTile(
