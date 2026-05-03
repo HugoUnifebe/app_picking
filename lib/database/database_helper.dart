@@ -50,20 +50,22 @@ class DatabaseHelper {
       )
     ''');
 
+    // Inserir usuário supervisor conforme solicitado
     await db.insert('usuario', {
-      'nome': 'administrador',
-      'email': 'admin@picking.com',
-      'codigo_barra_usuario': '1234',
-      'codigo_tipo': 1,
+      'nome': 'Supervisor',
+      'email': 'supervisor@picking.com',
+      'codigo_barra_usuario': '1234567899992',
+      'codigo_tipo': 1, // Supervisor
       'ativo': 1,
       'criado_em': DateTime.now().toIso8601String(),
     });
 
+    // Inserir usuário operador conforme solicitado
     await db.insert('usuario', {
-      'nome': 'operador',
+      'nome': 'Operador',
       'email': 'operador@picking.com',
-      'codigo_barra_usuario': '5678',
-      'codigo_tipo': 2,
+      'codigo_barra_usuario': '9876543211118',
+      'codigo_tipo': 2, // Operador
       'ativo': 1,
       'criado_em': DateTime.now().toIso8601String(),
     });
@@ -84,7 +86,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Pre-cadastrar status de caixa conforme solicitado
+    // Pre-cadastrar status de caixa
     await db.insert('status_caixa', {'descricao': 'Livre', 'cor_hex': '4CAF50'}); // Verde
     await db.insert('status_caixa', {'descricao': 'Ocupado', 'cor_hex': 'F44336'}); // Vermelho
     await db.insert('status_caixa', {'descricao': 'Desativado', 'cor_hex': 'FFFFFF'}); // Branco
