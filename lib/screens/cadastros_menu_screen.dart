@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'produto_list_screen.dart';
+import 'caixa_list_screen.dart';
 
 class CadastrosMenuScreen extends StatelessWidget {
   const CadastrosMenuScreen({super.key});
@@ -28,7 +29,7 @@ class CadastrosMenuScreen extends StatelessWidget {
             title: 'Caixas',
             subtitle: 'Configurar localizações e status de caixas',
             color: Colors.orange,
-            destination: const PlaceholderScreen(title: 'Caixas'),
+            destination: const CaixaListScreen(),
           ),
           const SizedBox(height: 12),
           _buildMenuTile(

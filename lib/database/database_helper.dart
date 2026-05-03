@@ -33,7 +33,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Inserir tipos iniciais
     await db.insert('usuario_tipo', {'nome': 'Supervisor'});
     await db.insert('usuario_tipo', {'nome': 'Operador'});
 
@@ -51,22 +50,20 @@ class DatabaseHelper {
       )
     ''');
 
-    // Inserir usuário administrador inicial
     await db.insert('usuario', {
       'nome': 'administrador',
       'email': 'admin@picking.com',
       'codigo_barra_usuario': '1234',
-      'codigo_tipo': 1, // Supervisor
+      'codigo_tipo': 1,
       'ativo': 1,
       'criado_em': DateTime.now().toIso8601String(),
     });
 
-    // Inserir usuário operador inicial
     await db.insert('usuario', {
       'nome': 'operador',
       'email': 'operador@picking.com',
       'codigo_barra_usuario': '5678',
-      'codigo_tipo': 2, // Operador
+      'codigo_tipo': 2,
       'ativo': 1,
       'criado_em': DateTime.now().toIso8601String(),
     });
@@ -87,14 +84,15 @@ class DatabaseHelper {
       )
     ''');
 
-    // Pre-cadastrar status de caixa
+    // Pre-cadastrar status de caixa conforme solicitado
     await db.insert('status_caixa', {'descricao': 'Livre', 'cor_hex': '4CAF50'}); // Verde
-    await db.insert('status_caixa', {'descricao': 'Ocupada', 'cor_hex': 'F44336'}); // Vermelho
-    await db.insert('status_caixa', {'descricao': 'Inativa', 'cor_hex': 'FFFFFF'}); // Branco
+    await db.insert('status_caixa', {'descricao': 'Ocupado', 'cor_hex': 'F44336'}); // Vermelho
+    await db.insert('status_caixa', {'descricao': 'Desativado', 'cor_hex': 'FFFFFF'}); // Branco
 
     await db.execute('''
       CREATE TABLE caixa (
         codigo_caixa INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome_caixa TEXT,
         codigo_status_caixa INTEGER,
         localizacao TEXT,
         criado_em TEXT,
@@ -111,7 +109,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Pre-cadastrar status de pedido
     await db.insert('status_pedido', {'descricao': 'Pendente', 'cor_hex': 'FFA500'});
     await db.insert('status_pedido', {'descricao': 'Em Separação', 'cor_hex': '0000FF'});
     await db.insert('status_pedido', {'descricao': 'Finalizado', 'cor_hex': '008000'});
@@ -136,7 +133,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Pre-cadastrar status de produto_pedido
     await db.insert('status_produto_pedido', {'descricao': 'Pendente', 'cor_hex': 'FFA500'});
     await db.insert('status_produto_pedido', {'descricao': 'Coletado', 'cor_hex': '008000'});
     await db.insert('status_produto_pedido', {'descricao': 'Indisponível', 'cor_hex': 'FF0000'});
