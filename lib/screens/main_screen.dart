@@ -67,10 +67,10 @@ class _MainScreenState extends State<MainScreen> {
     // Definimos as telas aqui para garantir que o _usuarioAtual seja passado corretamente
     final List<Widget> screens = [
       HomeScreen(
-        usuario: _usuarioAtual, 
+        usuario: _usuarioAtual,
         onSwitchUser: _usuarioAtual.codigoTipo == 1 ? _trocarParaOperador : null,
       ),
-      const CadastrosMenuScreen(),
+      if (_usuarioAtual.codigoTipo == 1) const CadastrosMenuScreen(),
       const PlaceholderScreen(title: 'Picking'),
     ];
 
@@ -84,11 +84,19 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _selectedIndex,
         selectedItemColor: const Color(0xFF003399),
         unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Cadastros'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_basket), label: 'Picking'),
+        onTap: (index) {
+          // Se for operador e tentar acessar cadastros (índice 1), ignoramos
+          if (_usuarioAtual.codigoTipo != 1 && index == 1 && screens.length > 2) {
+             // O operador não deve ver o botão de cadastros, mas por segurança bloqueamos o clique
+             return;
+          }
+          _onItemTapped(index);
+        },
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
+          if (_usuarioAtual.codigoTipo == 1)
+            const BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Cadastros'),
+          const BottomNavigationBarItem(icon: Icon(Icons.shopping_basket), label: 'Picking'),
         ],
       ),
     );
