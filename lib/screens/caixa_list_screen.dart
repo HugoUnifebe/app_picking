@@ -46,7 +46,7 @@ class _CaixaListScreenState extends State<CaixaListScreen> {
                     final caixaMap = _caixas[index];
                     final colorHex = caixaMap['cor_hex'] ?? 'CCCCCC';
                     final color = Color(int.parse('FF$colorHex', radix: 16));
-                    // Define a cor do ícone: preto se o fundo for branco (Desativado), branco caso contrário
+                    // Define a cor do ícone: cinza se o fundo for branco (Desativado), branco caso contrário
                     final iconColor = colorHex.toUpperCase() == 'FFFFFF' ? Colors.grey : Colors.white;
 
                     return Card(

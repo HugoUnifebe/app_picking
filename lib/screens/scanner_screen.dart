@@ -13,6 +13,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   final MobileScannerController controller = MobileScannerController();
   bool _hasPermission = false;
   bool _isCheckingPermission = true;
+  bool _isScanCompleted = false;
 
   @override
   void initState() {
@@ -110,10 +111,18 @@ class _ScannerScreenState extends State<ScannerScreen> {
           );
         },
         onDetect: (capture) {
+          if (_isScanCompleted) return;
+
           final List<Barcode> barcodes = capture.barcodes;
           for (final barcode in barcodes) {
             if (barcode.rawValue != null) {
-              Navigator.pop(context, barcode.rawValue);
+              _isScanCompleted = true;
+              // Pequeno delay para garantir que o Navigator feche apenas uma tela
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (mounted) {
+                  Navigator.pop(context, barcode.rawValue);
+                }
+              });
               break;
             }
           }
