@@ -3,9 +3,8 @@ import '../models/caixa.dart';
 import '../repositories/caixa_repository.dart';
 
 class CaixaFormScreen extends StatefulWidget {
-  final Caixa? caixa;
-
-  const CaixaFormScreen({super.key, this.caixa});
+  final int? caixaId;
+  const CaixaFormScreen({super.key, this.caixaId});
 
   @override
   State<CaixaFormScreen> createState() => _CaixaFormScreenState();
@@ -13,59 +12,54 @@ class CaixaFormScreen extends StatefulWidget {
 
 class _CaixaFormScreenState extends State<CaixaFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nomeController = TextEditingController();
-  final _localizacaoController = TextEditingController();
   final CaixaRepository _repository = CaixaRepository();
   
+  final _nomeController = TextEditingController();
+  final _localizacaoController = TextEditingController();
+  
+  int _selectedStatusId = 1; // Default Livre
+  bool _isLoading = true;
   List<Map<String, dynamic>> _statuses = [];
-  int? _selectedStatusId;
-  bool _isLoadingStatuses = true;
 
   @override
   void initState() {
     super.initState();
-    if (widget.caixa != null) {
-      _nomeController.text = widget.caixa!.nomeCaixa;
-      _localizacaoController.text = widget.caixa!.localizacao;
-      _selectedStatusId = widget.caixa!.codigoStatusCaixa;
-    }
-    _loadStatuses();
+    _loadData();
   }
 
-  Future<void> _loadStatuses() async {
-    final data = await _repository.getStatuses();
-    setState(() {
-      _statuses = data;
-      _isLoadingStatuses = false;
-      if (_selectedStatusId == null && _statuses.isNotEmpty) {
-        try {
-          _selectedStatusId = _statuses.firstWhere((s) => s['descricao'] == 'Livre')['codigo_status_caixa'];
-        } catch (e) {
-          _selectedStatusId = _statuses.first['codigo_status_caixa'];
-        }
+  Future<void> _loadData() async {
+    _statuses = await _repository.getStatuses();
+    
+    if (widget.caixaId != null) {
+      // Busca os dados da caixa pelo ID
+      final allCaixas = await _repository.getAllWithDetails();
+      final caixaMap = allCaixas.firstWhere(
+        (c) => c['codigo_caixa'] == widget.caixaId,
+        orElse: () => {},
+      );
+
+      if (caixaMap.isNotEmpty) {
+        _nomeController.text = caixaMap['nome_caixa'] ?? '';
+        _localizacaoController.text = caixaMap['localizacao'] ?? '';
+        _selectedStatusId = caixaMap['codigo_status_caixa'] ?? 1;
       }
-    });
+    }
+    
+    setState(() => _isLoading = false);
   }
 
-  @override
-  void dispose() {
-    _nomeController.dispose();
-    _localizacaoController.dispose();
-    super.dispose();
-  }
-
-  void _save() async {
+  Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
       final caixa = Caixa(
-        codigoCaixa: widget.caixa?.codigoCaixa,
+        codigoCaixa: widget.caixaId,
         nomeCaixa: _nomeController.text,
         codigoStatusCaixa: _selectedStatusId,
         localizacao: _localizacaoController.text,
-        criadoEm: widget.caixa?.criadoEm ?? DateTime.now(),
+        criadoEm: widget.caixaId == null ? DateTime.now() : null,
         editadoEm: DateTime.now(),
       );
 
-      if (widget.caixa == null) {
+      if (widget.caixaId == null) {
         await _repository.insert(caixa);
       } else {
         await _repository.update(caixa);
@@ -81,79 +75,53 @@ class _CaixaFormScreenState extends State<CaixaFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.caixa == null ? 'Nova Caixa' : 'Editar Caixa'),
+        title: Text(widget.caixaId == null ? 'Nova Caixa' : 'Editar Caixa'),
       ),
-      body: _isLoadingStatuses 
-        ? const Center(child: CircularProgressIndicator())
-        : Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _nomeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome da Caixa',
-                      border: OutlineInputBorder(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _nomeController,
+                      decoration: const InputDecoration(labelText: 'Nome da Caixa'),
+                      validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
                     ),
-                    validator: (value) => value!.isEmpty ? 'Obrigatório' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _localizacaoController,
-                    decoration: const InputDecoration(
-                      labelText: 'Localização / Identificação',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _localizacaoController,
+                      decoration: const InputDecoration(labelText: 'Localização / Endereço'),
                     ),
-                    validator: (value) => value!.isEmpty ? 'Obrigatório' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    value: _selectedStatusId,
-                    decoration: const InputDecoration(
-                      labelText: 'Status da Caixa',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      value: _selectedStatusId,
+                      decoration: const InputDecoration(labelText: 'Status da Caixa'),
+                      items: _statuses.map((s) => DropdownMenuItem(
+                        value: s['codigo_status_caixa'] as int,
+                        child: Text(s['descricao']),
+                      )).toList(),
+                      onChanged: (val) => setState(() => _selectedStatusId = val!),
                     ),
-                    items: _statuses.map((status) {
-                      final colorHex = status['cor_hex'] ?? 'CCCCCC';
-                      return DropdownMenuItem<int>(
-                        value: status['codigo_status_caixa'],
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Color(int.parse('FF$colorHex', radix: 16)),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(status['descricao']),
-                          ],
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF003399),
+                          foregroundColor: Colors.white,
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedStatusId = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _save,
-                      child: const Text('SALVAR', style: TextStyle(fontSize: 18)),
+                        child: const Text('SALVAR CAIXA'),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
     );
   }
 }

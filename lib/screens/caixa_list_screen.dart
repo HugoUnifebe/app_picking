@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../repositories/caixa_repository.dart';
-import '../models/caixa.dart';
 import 'caixa_form_screen.dart';
 
 class CaixaListScreen extends StatefulWidget {
@@ -12,8 +11,15 @@ class CaixaListScreen extends StatefulWidget {
 
 class _CaixaListScreenState extends State<CaixaListScreen> {
   final CaixaRepository _repository = CaixaRepository();
-  List<Map<String, dynamic>> _caixas = [];
+  List<Map<String, dynamic>> _allCaixas = [];
+  List<Map<String, dynamic>> _filteredCaixas = [];
+  List<Map<String, dynamic>> _statuses = [];
+  
   bool _isLoading = true;
+
+  // Filtros
+  final _nomeController = TextEditingController();
+  int? _selectedStatusId;
 
   @override
   void initState() {
@@ -24,9 +30,28 @@ class _CaixaListScreenState extends State<CaixaListScreen> {
   Future<void> _refreshList() async {
     setState(() => _isLoading = true);
     final data = await _repository.getAllWithDetails();
+    _statuses = await _repository.getStatuses();
+    
     setState(() {
-      _caixas = data;
+      _allCaixas = data;
+      _applyFilters();
       _isLoading = false;
+    });
+  }
+
+  void _applyFilters() {
+    setState(() {
+      _filteredCaixas = _allCaixas.where((caixa) {
+        // Filtro por Nome
+        final matchNome = _nomeController.text.isEmpty || 
+            (caixa['nome_caixa'] ?? '').toString().toLowerCase().contains(_nomeController.text.toLowerCase());
+        
+        // Filtro por Status
+        final matchStatus = _selectedStatusId == null || 
+            caixa['codigo_status_caixa'] == _selectedStatusId;
+
+        return matchNome && matchStatus;
+      }).toList();
     });
   }
 
@@ -34,57 +59,96 @@ class _CaixaListScreenState extends State<CaixaListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gerenciar Caixas'),
+        title: const Text('Caixas e Localizações'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _caixas.isEmpty
-              ? const Center(child: Text('Nenhuma caixa cadastrada.'))
-              : ListView.builder(
-                  itemCount: _caixas.length,
-                  itemBuilder: (context, index) {
-                    final caixaMap = _caixas[index];
-                    final colorHex = caixaMap['cor_hex'] ?? 'CCCCCC';
-                    final color = Color(int.parse('FF$colorHex', radix: 16));
-                    // Define a cor do ícone: cinza se o fundo for branco (Desativado), branco caso contrário
-                    final iconColor = colorHex.toUpperCase() == 'FFFFFF' ? Colors.grey : Colors.white;
+      body: Column(
+        children: [
+          // --- Barra de Filtros ---
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _nomeController,
+                    decoration: const InputDecoration(
+                      hintText: 'Nome da caixa...',
+                      prefixIcon: Icon(Icons.search, size: 20),
+                    ),
+                    onChanged: (_) => _applyFilters(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: DropdownButtonFormField<int>(
+                    value: _selectedStatusId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(hintText: 'Status'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Todos')),
+                      ..._statuses.map((s) => DropdownMenuItem(
+                        value: s['codigo_status_caixa'] as int,
+                        child: Text(s['descricao']),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      _selectedStatusId = val;
+                      _applyFilters();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(height: 1),
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: color,
-                          child: Icon(Icons.inventory, color: iconColor),
-                        ),
-                        title: Text(caixaMap['nome_caixa'] ?? 'Sem nome'),
-                        subtitle: Text('Local: ${caixaMap['localizacao']}\nStatus: ${caixaMap['status_nome']}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () async {
+          // --- Lista ---
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredCaixas.isEmpty
+                    ? const Center(child: Text('Nenhuma caixa encontrada.'))
+                    : ListView.builder(
+                        itemCount: _filteredCaixas.length,
+                        itemBuilder: (context, index) {
+                          final caixa = _filteredCaixas[index];
+                          final colorHex = caixa['cor_hex'] ?? 'CCCCCC';
+                          final statusColor = Color(int.parse('FF$colorHex', radix: 16));
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: statusColor,
+                                child: const Icon(Icons.inventory, color: Colors.white),
+                              ),
+                              title: Text(caixa['nome_caixa'] ?? 'Sem Nome'),
+                              subtitle: Text(
+                                'Status: ${caixa['status_nome']}\n'
+                                'Local: ${caixa['localizacao'] ?? "Não definida"}',
+                              ),
+                              trailing: const Icon(Icons.edit),
+                              isThreeLine: true,
+                              onTap: () async {
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => CaixaFormScreen(
-                                      caixa: Caixa.fromMap(caixaMap),
-                                    ),
+                                    builder: (context) => CaixaFormScreen(caixaId: caixa['codigo_caixa']),
                                   ),
                                 );
                                 if (result == true) _refreshList();
                               },
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _showDeleteDialog(caixaMap['codigo_caixa'], caixaMap['nome_caixa'] ?? ''),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(
@@ -94,27 +158,6 @@ class _CaixaListScreenState extends State<CaixaListScreen> {
           if (result == true) _refreshList();
         },
         child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(int id, String nome) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir Caixa'),
-        content: Text('Deseja realmente excluir a caixa $nome?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
-          TextButton(
-            onPressed: () async {
-              await _repository.delete(id);
-              if (mounted) Navigator.pop(context);
-              _refreshList();
-            },
-            child: const Text('EXCLUIR', style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
   }

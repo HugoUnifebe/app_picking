@@ -11,8 +11,16 @@ class PedidoListScreen extends StatefulWidget {
 
 class _PedidoListScreenState extends State<PedidoListScreen> {
   final PedidoRepository _repository = PedidoRepository();
-  List<Map<String, dynamic>> _pedidos = [];
+  List<Map<String, dynamic>> _allPedidos = [];
+  List<Map<String, dynamic>> _filteredPedidos = [];
+  List<Map<String, dynamic>> _statuses = [];
+  
   bool _isLoading = true;
+  
+  // Filtros
+  final _idController = TextEditingController();
+  final _caixaController = TextEditingController();
+  int? _selectedStatusId;
 
   @override
   void initState() {
@@ -23,13 +31,37 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   Future<void> _refreshList() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
+    
     final data = await _repository.getAllWithDetails();
+    _statuses = await _repository.getStatuses();
+    
     if (mounted) {
       setState(() {
-        _pedidos = data;
+        _allPedidos = data;
+        _applyFilters();
         _isLoading = false;
       });
     }
+  }
+
+  void _applyFilters() {
+    setState(() {
+      _filteredPedidos = _allPedidos.where((pedido) {
+        // Filtro por ID
+        final matchId = _idController.text.isEmpty || 
+            pedido['codigo_pedido'].toString().contains(_idController.text);
+        
+        // Filtro por Status
+        final matchStatus = _selectedStatusId == null || 
+            pedido['codigo_status_pedido'] == _selectedStatusId;
+        
+        // Filtro por Caixa
+        final matchCaixa = _caixaController.text.isEmpty || 
+            (pedido['nome_caixa'] ?? '').toString().toLowerCase().contains(_caixaController.text.toLowerCase());
+
+        return matchId && matchStatus && matchCaixa;
+      }).toList();
+    });
   }
 
   @override
@@ -38,47 +70,111 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
       appBar: AppBar(
         title: const Text('Pedidos'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _pedidos.isEmpty
-              ? const Center(child: Text('Nenhum pedido encontrado.'))
-              : ListView.builder(
-                  itemCount: _pedidos.length,
-                  itemBuilder: (context, index) {
-                    final pedido = _pedidos[index];
-                    final colorHex = pedido['status_cor'] ?? 'CCCCCC';
-                    final statusColor = Color(int.parse('FF$colorHex', radix: 16));
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        leading: Container(
-                          width: 8,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+      body: Column(
+        children: [
+          // --- Barra de Filtros ---
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.white,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _idController,
+                        decoration: const InputDecoration(
+                          hintText: 'Nº Pedido',
+                          prefixIcon: Icon(Icons.search, size: 20),
                         ),
-                        title: Text('Pedido #${pedido['codigo_pedido']}'),
-                        subtitle: Text(
-                          'Status: ${pedido['status_nome'] ?? "Aberto"}\n'
-                          'Caixa: ${pedido['nome_caixa'] ?? "Não atribuída"}',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PedidoFormScreen(pedidoId: pedido['codigo_pedido']),
-                            ),
-                          );
-                          if (result == true) _refreshList();
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => _applyFilters(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 3,
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedStatusId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(hintText: 'Status'),
+                        items: [
+                          const DropdownMenuItem(value: null, child: Text('Todos Status')),
+                          ..._statuses.map((s) => DropdownMenuItem(
+                            value: s['codigo_status_pedido'] as int,
+                            child: Text(s['descricao']),
+                          )),
+                        ],
+                        onChanged: (val) {
+                          _selectedStatusId = val;
+                          _applyFilters();
                         },
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _caixaController,
+                  decoration: const InputDecoration(
+                    hintText: 'Filtrar por nome da Caixa...',
+                    prefixIcon: Icon(Icons.inventory, size: 20),
+                  ),
+                  onChanged: (_) => _applyFilters(),
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(height: 1),
+
+          // --- Lista ---
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredPedidos.isEmpty
+                    ? const Center(child: Text('Nenhum pedido encontrado para os filtros.'))
+                    : ListView.builder(
+                        itemCount: _filteredPedidos.length,
+                        itemBuilder: (context, index) {
+                          final pedido = _filteredPedidos[index];
+                          final colorHex = pedido['status_cor'] ?? 'CCCCCC';
+                          final statusColor = Color(int.parse('FF$colorHex', radix: 16));
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: ListTile(
+                              leading: Container(
+                                width: 8,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              title: Text('Pedido #${pedido['codigo_pedido']}'),
+                              subtitle: Text(
+                                'Status: ${pedido['status_nome'] ?? "Aberto"}\n'
+                                'Caixa: ${pedido['nome_caixa'] ?? "Não atribuída"}',
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PedidoFormScreen(pedidoId: pedido['codigo_pedido']),
+                                  ),
+                                );
+                                if (result == true) _refreshList();
+                              },
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(
