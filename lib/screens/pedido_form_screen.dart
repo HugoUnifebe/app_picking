@@ -98,8 +98,11 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     } else {
       await _pedidoRepo.update(pedido);
       
-      // Se a caixa foi alterada na edição:
-      if (_selectedCaixaId != _originalCaixaId) {
+      // Regra: Se o status do pedido mudou para 'Finalizado' (ID 3), libera a caixa
+      if (_selectedStatusId == 3 && _selectedCaixaId != null) {
+        await _caixaRepo.updateStatus(_selectedCaixaId!, 1); // 1 = Livre
+      } else if (_selectedCaixaId != _originalCaixaId) {
+        // Se a caixa foi alterada na edição (lógica que já existia):
         // 1. Libera a caixa antiga (ID 1 = Livre)
         if (_originalCaixaId != null) {
           await _caixaRepo.updateStatus(_originalCaixaId!, 1);
