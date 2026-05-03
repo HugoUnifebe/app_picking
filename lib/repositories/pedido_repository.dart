@@ -7,13 +7,31 @@ class PedidoRepository {
 
   Future<int> insert(Pedido pedido) async {
     final db = await _dbHelper.database;
-    return await db.insert('pedido', pedido.toMap());
+    final Map<String, dynamic> data = pedido.toMap();
+    
+    // GARANTIA EXTRA: Se por algum motivo o model não gerou a data, 
+    // ou o nome da chave divergir, forçamos aqui no repositório.
+    data['criado_em'] = DateTime.now().toIso8601String();
+    data['editado_em'] = DateTime.now().toIso8601String();
+    
+    return await db.insert('pedido', data);
   }
 
   Future<List<Map<String, dynamic>>> getAllWithDetails() async {
     final db = await _dbHelper.database;
+    // Selecionamos explicitamente p.criado_em para não haver dúvida
     return await db.rawQuery('''
-      SELECT p.*, s.descricao as status_nome, s.cor_hex as status_cor, u.nome as responsavel_nome, c.nome_caixa
+      SELECT 
+        p.codigo_pedido, 
+        p.codigo_usuario_responsavel, 
+        p.codigo_status_pedido, 
+        p.codigo_caixa, 
+        p.criado_em, 
+        p.editado_em,
+        s.descricao as status_nome, 
+        s.cor_hex as status_cor, 
+        u.nome as responsavel_nome, 
+        c.nome_caixa
       FROM pedido p
       LEFT JOIN status_pedido s ON p.codigo_status_pedido = s.codigo_status_pedido
       LEFT JOIN usuario u ON p.codigo_usuario_responsavel = u.codigo_usuario
@@ -38,9 +56,16 @@ class PedidoRepository {
 
   Future<int> update(Pedido pedido) async {
     final db = await _dbHelper.database;
+    final Map<String, dynamic> data = pedido.toMap();
+    
+    // Na atualização, removemos o criado_em para não sobrescrever o original com NULL
+    // se o objeto pedido não o tiver carregado corretamente.
+    data.remove('criado_em');
+    data['editado_em'] = DateTime.now().toIso8601String();
+
     return await db.update(
       'pedido',
-      pedido.toMap(),
+      data,
       where: 'codigo_pedido = ?',
       whereArgs: [pedido.codigoPedido],
     );
@@ -57,7 +82,6 @@ class PedidoRepository {
   Future<void> addItem(int pedidoId, int produtoId) async {
     final db = await _dbHelper.database;
     
-    // Busca o próximo código_produto_pedido para este pedido
     final List<Map<String, dynamic>> maxResult = await db.rawQuery(
       'SELECT MAX(codigo_produto_pedido) as max_id FROM produto_pedido WHERE codigo_pedido = ?',
       [pedidoId]

@@ -21,6 +21,7 @@ class Pedido {
       'codigo_usuario_responsavel': codigoUsuarioResponsavel,
       'codigo_status_pedido': codigoStatusPedido,
       'codigo_caixa': codigoCaixa,
+      // IMPORTANTE: Mapeando explicitamente para o nome da coluna no banco
       'criado_em': criadoEm?.toIso8601String(),
       'editado_em': editadoEm?.toIso8601String(),
     };
@@ -32,8 +33,8 @@ class Pedido {
       codigoUsuarioResponsavel: map['codigo_usuario_responsavel'],
       codigoStatusPedido: map['codigo_status_pedido'],
       codigoCaixa: map['codigo_caixa'],
-      criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : null,
-      editadoEm: map['editado_em'] != null ? DateTime.parse(map['editado_em']) : null,
+      criadoEm: map['criado_em'] != null ? DateTime.tryParse(map['criado_em'].toString()) : null,
+      editadoEm: map['editado_em'] != null ? DateTime.tryParse(map['editado_em'].toString()) : null,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'cadastros_menu_screen.dart';
 import '../models/usuario.dart';
 import 'scanner_screen.dart';
 import '../repositories/usuario_repository.dart';
+import 'picking_order_list_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final Usuario usuarioLogado;
@@ -16,6 +17,9 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   late Usuario _usuarioAtual;
   final UsuarioRepository _usuarioRepo = UsuarioRepository();
+  
+  // Chave para acessar o estado da tela de picking e forçar o refresh
+  final GlobalKey<PickingOrderListScreenState> _pickingKey = GlobalKey<PickingOrderListScreenState>();
 
   @override
   void initState() {
@@ -27,6 +31,11 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
+    
+    // Se navegou para a aba de Picking (índice 2), forçamos o refresh imediato
+    if (index == 2) {
+      _pickingKey.currentState?.refreshList();
+    }
   }
 
   // Função para trocar de usuário (Supervisor -> Operador)
@@ -71,7 +80,7 @@ class _MainScreenState extends State<MainScreen> {
         onSwitchUser: _usuarioAtual.codigoTipo == 1 ? _trocarParaOperador : null,
       ),
       if (_usuarioAtual.codigoTipo == 1) const CadastrosMenuScreen(),
-      const PlaceholderScreen(title: 'Picking'),
+      PickingOrderListScreen(key: _pickingKey),
     ];
 
     return Scaffold(

@@ -75,8 +75,10 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       codigoPedido: _currentPedidoId,
       codigoStatusPedido: _selectedStatusId,
       codigoCaixa: _selectedCaixaId,
-      editadoEm: DateTime.now(),
-      criadoEm: isNovo ? DateTime.now() : null,
+      // Passamos nulo aqui pois o repositório agora assume a responsabilidade 
+      // de gerar e garantir os nomes corretos de coluna para as datas
+      editadoEm: null, 
+      criadoEm: null,
     );
 
     if (isNovo) {

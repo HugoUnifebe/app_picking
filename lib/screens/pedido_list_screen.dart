@@ -35,9 +35,30 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
     final data = await _repository.getAllWithDetails();
     _statuses = await _repository.getStatuses();
     
+    // Ordenação por Urgência (Igual ao Picking):
+    // 1. Status: Aguardando (1) > Em andamento (2) > Finalizado (3)
+    // 2. Data: Mais antigos primeiro (FIFO)
+    List<Map<String, dynamic>> mutableData = List.from(data);
+    mutableData.sort((a, b) {
+      int statusA = a['codigo_status_pedido'] ?? 99;
+      int statusB = b['codigo_status_pedido'] ?? 99;
+      
+      if (statusA != statusB) {
+        return statusA.compareTo(statusB);
+      }
+      
+      String dateStrA = a['criado_em'] ?? '';
+      String dateStrB = b['criado_em'] ?? '';
+      
+      if (dateStrA.isEmpty) return 1;
+      if (dateStrB.isEmpty) return -1;
+      
+      return dateStrA.compareTo(dateStrB);
+    });
+    
     if (mounted) {
       setState(() {
-        _allPedidos = data;
+        _allPedidos = mutableData;
         _applyFilters();
         _isLoading = false;
       });
