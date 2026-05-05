@@ -115,6 +115,30 @@ class PedidoRepository {
     return await db.query('status_pedido');
   }
 
+  Future<Map<String, dynamic>?> getByBoxBarcode(String barcode) async {
+    final db = await _dbHelper.database;
+    final List<Map<String, dynamic>> results = await db.rawQuery('''
+      SELECT p.*, s.descricao as status_nome
+      FROM pedido p
+      LEFT JOIN status_pedido s ON p.codigo_status_pedido = s.codigo_status_pedido
+      WHERE p.codigo_barra_caixa = ?
+    ''', [barcode]);
+    
+    if (results.isNotEmpty) return results.first;
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getProdutoByBarcode(String barcode) async {
+    final db = await _dbHelper.database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'produto',
+      where: 'codigo_barra_produto = ?',
+      whereArgs: [barcode],
+    );
+    if (results.isNotEmpty) return results.first;
+    return null;
+  }
+
   Future<void> updateItemStatus(int pedidoId, int produtoId, int itemSeq, int statusId) async {
     final db = await _dbHelper.database;
     await db.update(
