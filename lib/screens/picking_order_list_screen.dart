@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../repositories/pedido_repository.dart';
+import '../models/usuario.dart';
+import 'picking_execution_screen.dart';
+import 'scanner_screen.dart';
 
 class PickingOrderListScreen extends StatefulWidget {
-  const PickingOrderListScreen({super.key});
+  final Usuario usuario;
+  const PickingOrderListScreen({super.key, required this.usuario});
 
   @override
   State<PickingOrderListScreen> createState() => PickingOrderListScreenState();
@@ -52,21 +56,14 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
     try {
       final data = await _pedidoRepo.getAllWithDetails();
       
-      // LOG DE DEBUG PARA VOCÊ VER NO TERMINAL
-      if (data.isNotEmpty) {
-        debugPrint('--- DEBUG DATA PICKING ---');
-        debugPrint('Valor de criado_em: ${data.first['criado_em']}');
-        debugPrint('Tipo de criado_em: ${data.first['criado_em'].runtimeType}');
-      }
-
       List<Map<String, dynamic>> mutableData = List.from(data);
       
       mutableData.sort((a, b) {
         int statusA = a['codigo_status_pedido'] ?? 99;
         int statusB = b['codigo_status_pedido'] ?? 99;
         if (statusA != statusB) return statusA.compareTo(statusB);
-        String dateStrA = a['criado_em']?.toString() ?? '';
-        String dateStrB = b['criado_em']?.toString() ?? '';
+        String dateStrA = a['criado_em'] ?? '';
+        String dateStrB = b['criado_em'] ?? '';
         return dateStrA.compareTo(dateStrB);
       });
 
@@ -104,28 +101,101 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
     }
     
     try {
-      // Tenta parser padrão (ISO 8601)
       DateTime dt = (data is DateTime) ? data : DateTime.parse(data.toString().trim());
-      
       String dia = dt.day.toString().padLeft(2, '0');
       String mes = dt.month.toString().padLeft(2, '0');
       String hora = dt.hour.toString().padLeft(2, '0');
       String minuto = dt.minute.toString().padLeft(2, '0');
-      
       return "$dia/$mes $hora:$minuto";
     } catch (e) {
-      // Se falhar, tenta extração manual de strings comuns
-      try {
-        String s = data.toString();
-        // Esperado: YYYY-MM-DD HH:MM:SS
-        if (s.contains("-") && s.contains(" ")) {
-          List<String> partes = s.split(" ");
-          List<String> dataPartes = partes[0].split("-");
-          String horaCurta = partes[1].substring(0, 5);
-          return "${dataPartes[2]}/${dataPartes[1]} $horaCurta";
-        }
-      } catch (_) {}
       return "--:--";
+    }
+  }
+
+  void _abrirPorPapeleta() async {
+    final barcode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => ScannerScreen()),
+    );
+
+    if (barcode != null) {
+      // Procura o pedido pelo Nº do Pedido ou pelo Nome da Caixa na lista atual
+      final pedidoEncontrado = _allPedidos.firstWhere(
+        (p) => p['codigo_pedido'].toString() == barcode || 
+               (p['nome_caixa'] ?? '').toString().toLowerCase() == barcode.toLowerCase(),
+        orElse: () => {},
+      );
+
+      if (pedidoEncontrado.isNotEmpty) {
+        _selecionarPedido(pedidoEncontrado);
+      } else {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Não encontrado'),
+              content: Text('Nenhum pedido aberto ou em andamento encontrado para a papeleta: $barcode'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+              ],
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _selecionarPedido(Map<String, dynamic> pedido) async {
+    final bool emAndamento = pedido['codigo_status_pedido'] == 2;
+    final int? responsavelId = pedido['codigo_usuario_responsavel'];
+    final bool souResponsavel = responsavelId == widget.usuario.codigoUsuario;
+
+    // Se o pedido já estiver em andamento e eu não for o responsável
+    if (emAndamento && !souResponsavel && responsavelId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Este pedido já está sendo coletado por ${pedido['responsavel_nome'] ?? "outro usuário"}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Se eu já sou o responsável ou o pedido está aguardando
+    if (souResponsavel || !emAndamento) {
+      final bool? confirmar = souResponsavel ? true : await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Confirmar Picking'),
+          content: Text('Deseja assumir a responsabilidade pela coleta do Pedido #${pedido['codigo_pedido']}?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('NÃO')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true), 
+              child: const Text('SIM', style: TextStyle(fontWeight: FontWeight.bold))
+            ),
+          ],
+        ),
+      );
+
+      if (confirmar == true) {
+        if (!souResponsavel) {
+          await _pedidoRepo.atribuirResponsavel(pedido['codigo_pedido'], widget.usuario.codigoUsuario!);
+        }
+        
+        if (mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PickingExecutionScreen(
+                pedidoId: pedido['codigo_pedido'],
+                usuario: widget.usuario,
+              ),
+            ),
+          );
+          refreshList();
+        }
+      }
     }
   }
 
@@ -135,6 +205,11 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
       appBar: AppBar(
         title: const Text('Fila de Picking'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner, color: Color(0xFF003399)),
+            onPressed: _abrirPorPapeleta,
+            tooltip: "Abrir por Papeleta",
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => refreshList(),
@@ -199,12 +274,16 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
                             itemBuilder: (context, index) {
                               final pedido = _filteredPedidos[index];
                               final bool emAndamento = pedido['codigo_status_pedido'] == 2;
+                              final bool souResponsavel = pedido['codigo_usuario_responsavel'] == widget.usuario.codigoUsuario;
+
                               return Card(
                                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 elevation: emAndamento ? 4 : 1,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  side: emAndamento ? const BorderSide(color: Colors.blue, width: 2) : BorderSide.none,
+                                  side: emAndamento 
+                                    ? BorderSide(color: souResponsavel ? Colors.blue : Colors.red, width: 2) 
+                                    : BorderSide.none,
                                 ),
                                 child: ListTile(
                                   contentPadding: const EdgeInsets.all(16),
@@ -212,7 +291,10 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
                                     children: [
                                       Text('PEDIDO #${pedido['codigo_pedido']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                                       const Spacer(),
-                                      _buildBadge(pedido['status_nome'] ?? 'Aguardando', emAndamento ? Colors.blue : Colors.orange),
+                                      _buildBadge(
+                                        souResponsavel ? "Meu Picking" : (pedido['status_nome'] ?? 'Aguardando'), 
+                                        emAndamento ? (souResponsavel ? Colors.blue : Colors.red) : Colors.orange
+                                      ),
                                     ],
                                   ),
                                   subtitle: Padding(
@@ -235,12 +317,12 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
                                             Text('Criado em: ${_formatarHora(pedido['criado_em'])}', style: const TextStyle(color: Colors.grey)),
                                           ],
                                         ),
+                                        if (emAndamento && !souResponsavel)
+                                          Text('Resp: ${pedido['responsavel_nome'] ?? "Outro"}', style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
                                       ],
                                     ),
                                   ),
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pedido #${pedido['codigo_pedido']} selecionado')));
-                                  },
+                                  onTap: () => _selecionarPedido(pedido),
                                 ),
                               );
                             },

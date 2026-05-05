@@ -71,6 +71,33 @@ class PedidoRepository {
     );
   }
 
+  Future<void> atribuirResponsavel(int pedidoId, int usuarioId) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'pedido',
+      {
+        'codigo_usuario_responsavel': usuarioId,
+        'codigo_status_pedido': 2, // Muda para "Em andamento"
+        'editado_em': DateTime.now().toIso8601String(),
+      },
+      where: 'codigo_pedido = ?',
+      whereArgs: [pedidoId],
+    );
+  }
+
+  Future<void> updateStatusPedido(int pedidoId, int statusId) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'pedido',
+      {
+        'codigo_status_pedido': statusId,
+        'editado_em': DateTime.now().toIso8601String(),
+      },
+      where: 'codigo_pedido = ?',
+      whereArgs: [pedidoId],
+    );
+  }
+
   Future<int> delete(int id) async {
     final db = await _dbHelper.database;
     await db.delete('produto_pedido', where: 'codigo_pedido = ?', whereArgs: [id]);
