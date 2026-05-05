@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'scanner_screen.dart';
 import '../repositories/pedido_repository.dart';
 import 'picking_execution_screen.dart';
+import '../models/usuario.dart';
+import '../models/pedido.dart';
 
 class PickingStartScreen extends StatefulWidget {
-  const PickingStartScreen({super.key});
+  final Usuario usuario;
+  const PickingStartScreen({super.key, required this.usuario});
 
   @override
   State<PickingStartScreen> createState() => PickingStartScreenState();
@@ -12,6 +15,22 @@ class PickingStartScreen extends StatefulWidget {
 
 class PickingStartScreenState extends State<PickingStartScreen> {
   final PedidoRepository _pedidoRepo = PedidoRepository();
+
+  Future<void> _vincularUsuarioAoPedido(int pedidoId) async {
+    final pedidoMap = await _pedidoRepo.getById(pedidoId);
+    if (pedidoMap != null) {
+      final pedido = Pedido.fromMap(pedidoMap);
+      final pedidoAtualizado = Pedido(
+        codigoPedido: pedido.codigoPedido,
+        codigoUsuarioResponsavel: widget.usuario.codigoUsuario,
+        codigoBarraCaixa: pedido.codigoBarraCaixa,
+        codigoStatusPedido: pedido.codigoStatusPedido,
+        criadoEm: pedido.criadoEm,
+        finalizadoEm: pedido.finalizadoEm,
+      );
+      await _pedidoRepo.update(pedidoAtualizado);
+    }
+  }
 
   Future<void> _abrirCaixa() async {
     final barcode = await Navigator.push<String>(
@@ -24,12 +43,40 @@ class PickingStartScreenState extends State<PickingStartScreen> {
       
       if (pedido != null) {
         if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PickingExecutionScreen(pedidoId: pedido['codigo_pedido']),
-            ),
-          );
+          if (pedido['codigo_usuario_responsavel'] == null) {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Vincular Responsável'),
+                content: const Text('Não há responsável por este pedido. Deseja tornar-se o responsável?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('NÃO'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('SIM'),
+                  ),
+                ],
+              ),
+            );
+
+            if (confirm == true) {
+              await _vincularUsuarioAoPedido(pedido['codigo_pedido']);
+            } else {
+              return; // Volta para a tela de picking (que é esta mesma tela)
+            }
+          }
+
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PickingExecutionScreen(pedidoId: pedido['codigo_pedido']),
+              ),
+            );
+          }
         }
       } else {
         if (mounted) {

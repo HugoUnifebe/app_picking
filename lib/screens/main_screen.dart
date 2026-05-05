@@ -72,7 +72,7 @@ class _MainScreenState extends State<MainScreen> {
         onSwitchUser: _usuarioAtual.codigoTipo == 1 ? _trocarParaOperador : null,
       ),
       if (_usuarioAtual.codigoTipo == 1) const CadastrosMenuScreen(),
-      const PickingStartScreen(),
+      PickingStartScreen(usuario: _usuarioAtual),
     ];
 
     return Scaffold(
