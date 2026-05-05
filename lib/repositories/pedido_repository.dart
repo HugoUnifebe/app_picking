@@ -1,6 +1,5 @@
 import '../database/database_helper.dart';
 import '../models/pedido.dart';
-import '../models/produto_pedido.dart';
 
 class PedidoRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -9,8 +8,6 @@ class PedidoRepository {
     final db = await _dbHelper.database;
     final Map<String, dynamic> data = pedido.toMap();
     
-    // GARANTIA EXTRA: Se por algum motivo o model não gerou a data, 
-    // ou o nome da chave divergir, forçamos aqui no repositório.
     data['criado_em'] = DateTime.now().toIso8601String();
     data['editado_em'] = DateTime.now().toIso8601String();
     
@@ -19,23 +16,21 @@ class PedidoRepository {
 
   Future<List<Map<String, dynamic>>> getAllWithDetails() async {
     final db = await _dbHelper.database;
-    // Selecionamos explicitamente p.criado_em para não haver dúvida
     return await db.rawQuery('''
       SELECT 
         p.codigo_pedido, 
         p.codigo_usuario_responsavel, 
         p.codigo_status_pedido, 
-        p.codigo_caixa, 
+        p.codigo_barra_caixa, 
         p.criado_em, 
         p.editado_em,
+        p.finalizado_em,
         s.descricao as status_nome, 
         s.cor_hex as status_cor, 
-        u.nome as responsavel_nome, 
-        c.nome_caixa
+        u.nome as responsavel_nome
       FROM pedido p
       LEFT JOIN status_pedido s ON p.codigo_status_pedido = s.codigo_status_pedido
       LEFT JOIN usuario u ON p.codigo_usuario_responsavel = u.codigo_usuario
-      LEFT JOIN caixa c ON p.codigo_caixa = c.codigo_caixa
       ORDER BY p.criado_em DESC
     ''');
   }
@@ -43,10 +38,9 @@ class PedidoRepository {
   Future<Map<String, dynamic>?> getById(int id) async {
     final db = await _dbHelper.database;
     final List<Map<String, dynamic>> results = await db.rawQuery('''
-      SELECT p.*, s.descricao as status_nome, c.nome_caixa
+      SELECT p.*, s.descricao as status_nome
       FROM pedido p
       LEFT JOIN status_pedido s ON p.codigo_status_pedido = s.codigo_status_pedido
-      LEFT JOIN caixa c ON p.codigo_caixa = c.codigo_caixa
       WHERE p.codigo_pedido = ?
     ''', [id]);
     
@@ -58,8 +52,6 @@ class PedidoRepository {
     final db = await _dbHelper.database;
     final Map<String, dynamic> data = pedido.toMap();
     
-    // Na atualização, removemos o criado_em para não sobrescrever o original com NULL
-    // se o objeto pedido não o tiver carregado corretamente.
     data.remove('criado_em');
     data['editado_em'] = DateTime.now().toIso8601String();
 
@@ -93,7 +85,7 @@ class PedidoRepository {
       'codigo_produto_pedido': nextId,
       'codigo_pedido': pedidoId,
       'codigo_produto': produtoId,
-      'codigo_status_produto_pedido': 1, // 1 = "Não está na caixa" (Branco)
+      'codigo_status_produto_pedido': 1, // 1 = "Não está na caixa"
     });
   }
 

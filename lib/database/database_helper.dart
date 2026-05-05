@@ -77,30 +77,6 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
-      CREATE TABLE status_caixa (
-        codigo_status_caixa INTEGER PRIMARY KEY AUTOINCREMENT,
-        descricao TEXT,
-        cor_hex TEXT
-      )
-    ''');
-
-    await db.insert('status_caixa', {'descricao': 'Livre', 'cor_hex': '4CAF50'});
-    await db.insert('status_caixa', {'descricao': 'Ocupado', 'cor_hex': 'F44336'});
-    await db.insert('status_caixa', {'descricao': 'Desativado', 'cor_hex': 'FFFFFF'});
-
-    await db.execute('''
-      CREATE TABLE caixa (
-        codigo_caixa INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome_caixa TEXT,
-        codigo_status_caixa INTEGER,
-        localizacao TEXT,
-        criado_em TEXT,
-        editado_em TEXT,
-        FOREIGN KEY (codigo_status_caixa) REFERENCES status_caixa(codigo_status_caixa)
-      )
-    ''');
-
-    await db.execute('''
       CREATE TABLE status_pedido (
         codigo_status_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
         descricao TEXT,
@@ -116,13 +92,13 @@ class DatabaseHelper {
       CREATE TABLE pedido (
         codigo_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
         codigo_usuario_responsavel INTEGER,
+        codigo_barra_caixa TEXT,
         codigo_status_pedido INTEGER,
-        codigo_caixa INTEGER,
         criado_em TEXT,
         editado_em TEXT,
+        finalizado_em TEXT,
         FOREIGN KEY (codigo_status_pedido) REFERENCES status_pedido(codigo_status_pedido),
-        FOREIGN KEY (codigo_usuario_responsavel) REFERENCES usuario(codigo_usuario),
-        FOREIGN KEY (codigo_caixa) REFERENCES caixa(codigo_caixa)
+        FOREIGN KEY (codigo_usuario_responsavel) REFERENCES usuario(codigo_usuario)
       )
     ''');
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'produto_list_screen.dart';
-import 'caixa_list_screen.dart';
 import 'pedido_list_screen.dart';
 import 'usuario_list_screen.dart';
 
@@ -32,15 +31,6 @@ class CadastrosMenuScreen extends StatelessWidget {
             subtitle: 'Gerenciar catálogo de produtos e EANs',
             color: Colors.blue,
             destination: const ProdutoListScreen(),
-          ),
-          const SizedBox(height: 12),
-          _buildMenuTile(
-            context,
-            icon: Icons.inventory,
-            title: 'Caixas',
-            subtitle: 'Configurar localizações e status de caixas',
-            color: Colors.orange,
-            destination: const CaixaListScreen(),
           ),
           const SizedBox(height: 12),
           _buildMenuTile(

@@ -35,9 +35,6 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
     final data = await _repository.getAllWithDetails();
     _statuses = await _repository.getStatuses();
     
-    // Ordenação por Urgência (Igual ao Picking):
-    // 1. Status: Aguardando (1) > Em andamento (2) > Finalizado (3)
-    // 2. Data: Mais antigos primeiro (FIFO)
     List<Map<String, dynamic>> mutableData = List.from(data);
     mutableData.sort((a, b) {
       int statusA = a['codigo_status_pedido'] ?? 99;
@@ -76,9 +73,9 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
         final matchStatus = _selectedStatusId == null || 
             pedido['codigo_status_pedido'] == _selectedStatusId;
         
-        // Filtro por Caixa
+        // Filtro por Caixa (Código de Barras)
         final matchCaixa = _caixaController.text.isEmpty || 
-            (pedido['nome_caixa'] ?? '').toString().toLowerCase().contains(_caixaController.text.toLowerCase());
+            (pedido['codigo_barra_caixa'] ?? '').toString().toLowerCase().contains(_caixaController.text.toLowerCase());
 
         return matchId && matchStatus && matchCaixa;
       }).toList();
@@ -139,7 +136,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                 TextField(
                   controller: _caixaController,
                   decoration: const InputDecoration(
-                    hintText: 'Filtrar por nome da Caixa...',
+                    hintText: 'Filtrar por Código da Caixa...',
                     prefixIcon: Icon(Icons.inventory, size: 20),
                   ),
                   onChanged: (_) => _applyFilters(),
@@ -177,7 +174,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                               title: Text('Pedido #${pedido['codigo_pedido']}'),
                               subtitle: Text(
                                 'Status: ${pedido['status_nome'] ?? "Aberto"}\n'
-                                'Caixa: ${pedido['nome_caixa'] ?? "Não atribuída"}',
+                                'Caixa: ${pedido['codigo_barra_caixa'] ?? "Não informada"}',
                               ),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () async {

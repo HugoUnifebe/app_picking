@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../models/pedido.dart';
 import '../repositories/pedido_repository.dart';
 import '../repositories/produto_repository.dart';
-import '../repositories/caixa_repository.dart';
+import 'scanner_screen.dart';
 
 class PedidoFormScreen extends StatefulWidget {
   final int? pedidoId;
@@ -16,23 +17,51 @@ class PedidoFormScreen extends StatefulWidget {
 class _PedidoFormScreenState extends State<PedidoFormScreen> {
   final PedidoRepository _pedidoRepo = PedidoRepository();
   final ProdutoRepository _produtoRepo = ProdutoRepository();
-  final CaixaRepository _caixaRepo = CaixaRepository();
+  final _caixaBarraController = TextEditingController();
   
   List<Map<String, dynamic>> _itens = [];
   List<Map<String, dynamic>> _statuses = [];
-  List<Map<String, dynamic>> _caixas = [];
   
   bool _isLoading = true;
   int? _currentPedidoId;
   int? _selectedStatusId;
-  int? _selectedCaixaId;
-  int? _originalCaixaId;
+  DateTime? _finalizadoEm;
 
   @override
   void initState() {
     super.initState();
     _currentPedidoId = widget.pedidoId;
     _initData();
+  }
+
+  void _gerarCodigoAleatorio() {
+    final random = Random();
+    String codigo = '';
+    for (int i = 0; i < 13; i++) {
+      codigo += random.nextInt(10).toString();
+    }
+    setState(() {
+      _caixaBarraController.text = codigo;
+    });
+  }
+
+  Future<void> _escanearCodigo() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const ScannerScreen()),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _caixaBarraController.text = result;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _caixaBarraController.dispose();
+    super.dispose();
   }
 
   Future<void> _initData() async {
@@ -44,13 +73,13 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       final pedidoData = await _pedidoRepo.getById(_currentPedidoId!);
       if (pedidoData != null) {
         _selectedStatusId = pedidoData['codigo_status_pedido'];
-        _selectedCaixaId = pedidoData['codigo_caixa'];
-        _originalCaixaId = _selectedCaixaId;
+        _caixaBarraController.text = pedidoData['codigo_barra_caixa'] ?? '';
+        _finalizadoEm = pedidoData['finalizado_em'] != null 
+            ? DateTime.tryParse(pedidoData['finalizado_em'].toString()) 
+            : null;
       }
-      _caixas = await _caixaRepo.getFreeBoxes(includeCaixaId: _selectedCaixaId);
       await _loadItems();
     } else {
-      _caixas = await _caixaRepo.getFreeBoxes();
       if (_statuses.isNotEmpty) _selectedStatusId = _statuses.first['codigo_status_pedido'];
       _isLoading = false;
     }
@@ -71,12 +100,18 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
   Future<void> _savePedido({bool fecharTela = false}) async {
     final isNovo = _currentPedidoId == null;
 
+    // Se o status mudou para Finalizado (3), definimos a data de finalização
+    if (_selectedStatusId == 3 && _finalizadoEm == null) {
+      _finalizadoEm = DateTime.now();
+    } else if (_selectedStatusId != 3) {
+      _finalizadoEm = null;
+    }
+
     final pedido = Pedido(
       codigoPedido: _currentPedidoId,
       codigoStatusPedido: _selectedStatusId,
-      codigoCaixa: _selectedCaixaId,
-      // Passamos nulo aqui pois o repositório agora assume a responsabilidade 
-      // de gerar e garantir os nomes corretos de coluna para as datas
+      codigoBarraCaixa: _caixaBarraController.text,
+      finalizadoEm: _finalizadoEm,
       editadoEm: null, 
       criadoEm: null,
     );
@@ -84,10 +119,6 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     if (isNovo) {
       final id = await _pedidoRepo.insert(pedido);
       setState(() => _currentPedidoId = id);
-      
-      if (_selectedCaixaId != null) {
-        await _caixaRepo.updateStatus(_selectedCaixaId!, 2);
-      }
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido criado!')));
@@ -98,18 +129,6 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     } else {
       await _pedidoRepo.update(pedido);
       
-      if (_selectedStatusId == 3 && _selectedCaixaId != null) {
-        await _caixaRepo.updateStatus(_selectedCaixaId!, 1);
-      } else if (_selectedCaixaId != _originalCaixaId) {
-        if (_originalCaixaId != null) {
-          await _caixaRepo.updateStatus(_originalCaixaId!, 1);
-        }
-        if (_selectedCaixaId != null) {
-          await _caixaRepo.updateStatus(_selectedCaixaId!, 2);
-        }
-        _originalCaixaId = _selectedCaixaId;
-      }
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido atualizado!')));
         if (fecharTela) {
@@ -124,7 +143,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Excluir Pedido'),
-        content: const Text('Tem certeza que deseja excluir este pedido? A caixa vinculada será liberada.'),
+        content: const Text('Tem certeza que deseja excluir este pedido?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -139,9 +158,6 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     );
 
     if (confirm == true && _currentPedidoId != null) {
-      if (_selectedCaixaId != null) {
-        await _caixaRepo.updateStatus(_selectedCaixaId!, 1);
-      }
       await _pedidoRepo.delete(_currentPedidoId!);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido excluído com sucesso!')));
@@ -264,14 +280,27 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
                         onChanged: (val) => setState(() => _selectedStatusId = val),
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<int>(
-                        value: _selectedCaixaId,
-                        decoration: const InputDecoration(labelText: 'Caixa / Carrinho'),
-                        items: _caixas.map((c) => DropdownMenuItem(
-                          value: c['codigo_caixa'] as int,
-                          child: Text('${c['nome_caixa'] ?? "S/N"} (${c['localizacao'] ?? ""})'),
-                        )).toList(),
-                        onChanged: (val) => setState(() => _selectedCaixaId = val),
+                      TextFormField(
+                        controller: _caixaBarraController,
+                        decoration: InputDecoration(
+                          labelText: 'Código de Barras da Caixa',
+                          prefixIcon: const Icon(Icons.inventory),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.qr_code_scanner, color: Colors.blue),
+                                tooltip: 'Escanear Código',
+                                onPressed: _escanearCodigo,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.casino, color: Colors.orange),
+                                tooltip: 'Gerar Aleatório',
+                                onPressed: _gerarCodigoAleatorio,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),

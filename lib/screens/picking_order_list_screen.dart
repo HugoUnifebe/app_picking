@@ -52,13 +52,6 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
     try {
       final data = await _pedidoRepo.getAllWithDetails();
       
-      // LOG DE DEBUG PARA VOCÊ VER NO TERMINAL
-      if (data.isNotEmpty) {
-        debugPrint('--- DEBUG DATA PICKING ---');
-        debugPrint('Valor de criado_em: ${data.first['criado_em']}');
-        debugPrint('Tipo de criado_em: ${data.first['criado_em'].runtimeType}');
-      }
-
       List<Map<String, dynamic>> mutableData = List.from(data);
       
       mutableData.sort((a, b) {
@@ -92,7 +85,7 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
         final matchId = idQuery.isEmpty || 
             pedido['codigo_pedido'].toString().contains(idQuery);
         final matchCaixa = caixaQuery.isEmpty || 
-            (pedido['nome_caixa'] ?? '').toString().toLowerCase().contains(caixaQuery);
+            (pedido['codigo_barra_caixa'] ?? '').toString().toLowerCase().contains(caixaQuery);
         return matchId && matchCaixa;
       }).toList();
     });
@@ -104,7 +97,6 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
     }
     
     try {
-      // Tenta parser padrão (ISO 8601)
       DateTime dt = (data is DateTime) ? data : DateTime.parse(data.toString().trim());
       
       String dia = dt.day.toString().padLeft(2, '0');
@@ -114,10 +106,8 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
       
       return "$dia/$mes $hora:$minuto";
     } catch (e) {
-      // Se falhar, tenta extração manual de strings comuns
       try {
         String s = data.toString();
-        // Esperado: YYYY-MM-DD HH:MM:SS
         if (s.contains("-") && s.contains(" ")) {
           List<String> partes = s.split(" ");
           List<String> dataPartes = partes[0].split("-");
@@ -224,7 +214,7 @@ class PickingOrderListScreenState extends State<PickingOrderListScreen> {
                                           children: [
                                             const Icon(Icons.inventory, size: 16, color: Colors.grey),
                                             const SizedBox(width: 4),
-                                            Text('Caixa: ${pedido['nome_caixa'] ?? "Não atribuída"}', style: const TextStyle(fontSize: 16)),
+                                            Text('Caixa: ${pedido['codigo_barra_caixa'] ?? "Não informada"}', style: const TextStyle(fontSize: 16)),
                                           ],
                                         ),
                                         const SizedBox(height: 4),

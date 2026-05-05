@@ -1,29 +1,31 @@
 class Pedido {
   final int? codigoPedido;
   final int? codigoUsuarioResponsavel;
+  final String? codigoBarraCaixa;
   final int? codigoStatusPedido;
-  final int? codigoCaixa;
   final DateTime? criadoEm;
   final DateTime? editadoEm;
+  final DateTime? finalizadoEm;
 
   Pedido({
     this.codigoPedido,
     this.codigoUsuarioResponsavel,
+    this.codigoBarraCaixa,
     this.codigoStatusPedido,
-    this.codigoCaixa,
     this.criadoEm,
     this.editadoEm,
+    this.finalizadoEm,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'codigo_pedido': codigoPedido,
       'codigo_usuario_responsavel': codigoUsuarioResponsavel,
+      'codigo_barra_caixa': codigoBarraCaixa,
       'codigo_status_pedido': codigoStatusPedido,
-      'codigo_caixa': codigoCaixa,
-      // IMPORTANTE: Mapeando explicitamente para o nome da coluna no banco
       'criado_em': criadoEm?.toIso8601String(),
       'editado_em': editadoEm?.toIso8601String(),
+      'finalizado_em': finalizadoEm?.toIso8601String(),
     };
   }
 
@@ -31,10 +33,11 @@ class Pedido {
     return Pedido(
       codigoPedido: map['codigo_pedido'],
       codigoUsuarioResponsavel: map['codigo_usuario_responsavel'],
+      codigoBarraCaixa: map['codigo_barra_caixa'],
       codigoStatusPedido: map['codigo_status_pedido'],
-      codigoCaixa: map['codigo_caixa'],
       criadoEm: map['criado_em'] != null ? DateTime.tryParse(map['criado_em'].toString()) : null,
       editadoEm: map['editado_em'] != null ? DateTime.tryParse(map['editado_em'].toString()) : null,
+      finalizadoEm: map['finalizado_em'] != null ? DateTime.tryParse(map['finalizado_em'].toString()) : null,
     );
   }
 }
