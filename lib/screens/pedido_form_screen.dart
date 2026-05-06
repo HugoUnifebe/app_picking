@@ -3,6 +3,7 @@ import 'dart:math';
 import '../models/pedido.dart';
 import '../repositories/pedido_repository.dart';
 import '../repositories/produto_repository.dart';
+import '../repositories/usuario_repository.dart';
 import 'scanner_screen.dart';
 
 class PedidoFormScreen extends StatefulWidget {
@@ -17,14 +18,17 @@ class PedidoFormScreen extends StatefulWidget {
 class _PedidoFormScreenState extends State<PedidoFormScreen> {
   final PedidoRepository _pedidoRepo = PedidoRepository();
   final ProdutoRepository _produtoRepo = ProdutoRepository();
+  final UsuarioRepository _usuarioRepo = UsuarioRepository();
   final _caixaBarraController = TextEditingController();
   
   List<Map<String, dynamic>> _itens = [];
   List<Map<String, dynamic>> _statuses = [];
+  List<Map<String, dynamic>> _usuarios = [];
   
   bool _isLoading = true;
   int? _currentPedidoId;
   int? _selectedStatusId;
+  int? _selectedUsuarioId;
   DateTime? _finalizadoEm;
 
   @override
@@ -68,11 +72,13 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     setState(() => _isLoading = true);
     
     _statuses = await _pedidoRepo.getStatuses();
+    _usuarios = await _usuarioRepo.getAll();
     
     if (_currentPedidoId != null) {
       final pedidoData = await _pedidoRepo.getById(_currentPedidoId!);
       if (pedidoData != null) {
         _selectedStatusId = pedidoData['codigo_status_pedido'];
+        _selectedUsuarioId = pedidoData['codigo_usuario_responsavel'];
         _caixaBarraController.text = pedidoData['codigo_barra_caixa'] ?? '';
         _finalizadoEm = pedidoData['finalizado_em'] != null 
             ? DateTime.tryParse(pedidoData['finalizado_em'].toString()) 
@@ -110,6 +116,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
     final pedido = Pedido(
       codigoPedido: _currentPedidoId,
       codigoStatusPedido: _selectedStatusId,
+      codigoUsuarioResponsavel: _selectedUsuarioId,
       codigoBarraCaixa: _caixaBarraController.text,
       finalizadoEm: _finalizadoEm,
       editadoEm: null, 
@@ -301,6 +308,25 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
                             ],
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int?>(
+                        value: _selectedUsuarioId,
+                        decoration: const InputDecoration(
+                          labelText: 'Usuário Responsável',
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('Nenhum'),
+                          ),
+                          ..._usuarios.map((u) => DropdownMenuItem<int?>(
+                                value: u['codigo_usuario'] as int,
+                                child: Text(u['nome']),
+                              )),
+                        ],
+                        onChanged: (val) => setState(() => _selectedUsuarioId = val),
                       ),
                     ],
                   ),
