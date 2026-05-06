@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../repositories/pedido_repository.dart';
 import 'scanner_screen.dart';
+import '../models/pedido.dart';
 
 class PickingExecutionScreen extends StatefulWidget {
   final int pedidoId;
@@ -185,9 +186,26 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
             child: const Text('CANCELAR'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Fecha dialog
-              Navigator.pop(context); // Volta para o início
+            onPressed: () async {
+              // Set order status to 3 (Finalizado)
+              final pedidoMap = await _pedidoRepo.getById(widget.pedidoId);
+              if (pedidoMap != null) {
+                final pedido = Pedido.fromMap(pedidoMap);
+                final pedidoFinalizado = Pedido(
+                  codigoPedido: pedido.codigoPedido,
+                  codigoUsuarioResponsavel: pedido.codigoUsuarioResponsavel,
+                  codigoBarraCaixa: pedido.codigoBarraCaixa,
+                  codigoStatusPedido: 3, // Status "Finalizado"
+                  criadoEm: pedido.criadoEm,
+                  finalizadoEm: DateTime.now(),
+                );
+                await _pedidoRepo.update(pedidoFinalizado);
+              }
+              
+              if (mounted) {
+                Navigator.pop(context); // Fecha dialog
+                Navigator.pop(context); // Volta para o início
+              }
             },
             child: const Text('CONFIRMAR'),
           )

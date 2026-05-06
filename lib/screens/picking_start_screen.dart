@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'scanner_screen.dart';
 import '../repositories/pedido_repository.dart';
 import 'picking_execution_screen.dart';
@@ -15,6 +16,13 @@ class PickingStartScreen extends StatefulWidget {
 
 class PickingStartScreenState extends State<PickingStartScreen> {
   final PedidoRepository _pedidoRepo = PedidoRepository();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
 
   Future<void> _vincularUsuarioAoPedido(int pedidoId) async {
     final pedidoMap = await _pedidoRepo.getById(pedidoId);
@@ -43,6 +51,21 @@ class PickingStartScreenState extends State<PickingStartScreen> {
       
       if (pedido != null) {
         if (mounted) {
+          // Check if order is already finalized (status 3)
+          if (pedido['codigo_status_pedido'] == 3) {
+            await _audioPlayer.play(AssetSource('beep_longo.mp3'));
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Este pedido já foi finalizado!', style: TextStyle(fontWeight: FontWeight.bold)),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
+            return;
+          }
+
           if (pedido['codigo_usuario_responsavel'] == null) {
             final confirm = await showDialog<bool>(
               context: context,
