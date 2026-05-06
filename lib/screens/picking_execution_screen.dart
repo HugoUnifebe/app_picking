@@ -53,11 +53,18 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
     // Se todos os itens estiverem na caixa (status 2 ou 3), finaliza
     final todosColetados = items.every((i) => i['codigo_status_produto_pedido'] >= 2);
     if (todosColetados && items.isNotEmpty) {
-      _finalizarCaixa(completa: items.every((i) => i['codigo_status_produto_pedido'] == 3));
+      // Consideramos completa se não houver nenhum item com status 1 (Pendente)
+      // O status 2 é "Na caixa" e o status 3 é "Finalizado" (se aplicável)
+      _finalizarCaixa(completa: true);
     }
   }
 
-  Future<void> _playBeep(bool success, {bool completed = false}) async {
+  Future<void> _playBeep(bool success, {bool completed = false, bool finishing = false}) async {
+    if (finishing) {
+      await _audioPlayer.play(AssetSource('success.mp3'));
+      return;
+    }
+
     if (success) {
       if (completed) {
         await _audioPlayer.play(AssetSource('beep_simples.mp3'));
@@ -156,6 +163,11 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
   }
 
   void _finalizarCaixa({required bool completa}) {
+    if (completa) {
+      setState(() => _feedbackColor = Colors.green);
+      _playBeep(true, finishing: true);
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -165,12 +177,19 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
           ? 'Todas as peças foram coletadas com sucesso!' 
           : 'Algumas peças não foram coletadas por desabastecimento.'),
         actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Fecha dialog
+              setState(() => _feedbackColor = Colors.white);
+            },
+            child: const Text('CANCELAR'),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context); // Fecha dialog
               Navigator.pop(context); // Volta para o início
             },
-            child: const Text('OK'),
+            child: const Text('CONFIRMAR'),
           )
         ],
       ),
