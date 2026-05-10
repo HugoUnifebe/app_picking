@@ -28,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (usuario != null) {
+        debugPrint('Login realizado com sucesso: ${usuario.nome}');
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -37,11 +38,20 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } else {
+        debugPrint('--- FALHA NO LOGIN ---');
+        debugPrint('Código de barras lido: "$barcode"');
+        debugPrint('-----------------------');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Acesso restrito a Supervisores ou usuário não encontrado!'),
+            SnackBar(
+              content: Text('Cód: "$barcode" - Usuário não encontrado ou sem permissão de Supervisor.'),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 10), // Aumentado para dar tempo de ler o código
+              action: SnackBarAction(
+                label: 'FECHAR',
+                textColor: Colors.white,
+                onPressed: () {},
+              ),
             ),
           );
         }
