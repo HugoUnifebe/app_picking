@@ -30,6 +30,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
   int? _selectedStatusId;
   int? _selectedUsuarioId;
   DateTime? _finalizadoEm;
+  bool _isExplicitlySaved = false;
 
   @override
   void initState() {
@@ -130,6 +131,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido criado!')));
         if (fecharTela) {
+          _isExplicitlySaved = true;
           Navigator.pop(context, true);
         }
       }
@@ -139,6 +141,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido atualizado!')));
         if (fecharTela) {
+          _isExplicitlySaved = true;
           Navigator.pop(context, true);
         }
       }
@@ -252,8 +255,18 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) {
+          // Se for um novo pedido, o ID foi gerado automaticamente mas NÃO foi salvo explicitamente
+          if (widget.pedidoId == null && _currentPedidoId != null && !_isExplicitlySaved) {
+            await _pedidoRepo.delete(_currentPedidoId!);
+          }
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
         title: Text(_currentPedidoId == null ? 'Novo Pedido' : 'Pedido #$_currentPedidoId'),
         actions: [
           if (_currentPedidoId != null) ...[
@@ -326,7 +339,14 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
                                 child: Text(u['nome']),
                               )),
                         ],
-                        onChanged: (val) => setState(() => _selectedUsuarioId = val),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedUsuarioId = val;
+                            if (val != null) {
+                              _selectedStatusId = 2; // "Em andamento"
+                            }
+                          });
+                        },
                       ),
                     ],
                   ),
@@ -392,6 +412,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
         icon: const Icon(Icons.add_shopping_cart),
         label: const Text('ADICIONAR PRODUTO'),
       ),
+    ),
     );
   }
 }

@@ -32,7 +32,7 @@ class PickingStartScreenState extends State<PickingStartScreen> {
         codigoPedido: pedido.codigoPedido,
         codigoUsuarioResponsavel: widget.usuario.codigoUsuario,
         codigoBarraCaixa: pedido.codigoBarraCaixa,
-        codigoStatusPedido: pedido.codigoStatusPedido,
+        codigoStatusPedido: 2, // "Em andamento"
         criadoEm: pedido.criadoEm,
         finalizadoEm: pedido.finalizadoEm,
       );

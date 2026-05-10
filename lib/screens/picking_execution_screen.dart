@@ -41,12 +41,14 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
     // Agrupar itens por SKU/Endereço/Cor/Tamanho para exibição em lista
     final grouped = <String, List<Map<String, dynamic>>>{};
     for (var item in items) {
-      final key = "${item['sku']}-${item['localizacao']}-${item['cor']}-${item['tamanho']}";
-      grouped.putIfAbsent(key, () => []).add(item);
+      // Criamos uma cópia mutável de cada item para podermos alterar o status localmente
+      final mutableItem = Map<String, dynamic>.from(item);
+      final key = "${mutableItem['sku']}-${mutableItem['localizacao']}-${mutableItem['cor']}-${mutableItem['tamanho']}";
+      grouped.putIfAbsent(key, () => []).add(mutableItem);
     }
 
     setState(() {
-      _allOrderItems = items;
+      _allOrderItems = grouped.values.expand((element) => element).toList();
       _groupedItems = grouped;
       _isLoading = false;
     });
@@ -68,10 +70,10 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
 
     if (success) {
       if (completed) {
-        await _audioPlayer.play(AssetSource('beep_simples.mp3'));
-        await Future.delayed(const Duration(milliseconds: 200));
-        await _audioPlayer.play(AssetSource('beep_simples.mp3'));
+        // Regra 3.2: SKU finalizada -> Som de Sucesso
+        await _audioPlayer.play(AssetSource('success.mp3'));
       } else {
+        // SKU ainda com unidades pendentes -> Bipe simples
         await _audioPlayer.play(AssetSource('beep_simples.mp3'));
       }
     } else {
@@ -109,57 +111,87 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
   }
 
   Future<void> _biparPeca() async {
-    final barcode = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(builder: (context) => const ScannerScreen()),
-    );
+    try {
+      final barcode = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(builder: (context) => const ScannerScreen()),
+      );
 
-    if (barcode == null) return;
+      if (barcode == null) return;
 
-    // Busca o produto pelo código de barras bipado
-    final prod = await _pedidoRepo.getProdutoByBarcode(barcode);
+      debugPrint('--- INÍCIO BIPAGEM: $barcode ---');
 
-    if (prod != null) {
-      // Encontrar o primeiro item pendente com esse SKU na lista geral do pedido
-      final itemPendente = _allOrderItems.where((i) => 
-        i['sku'] == prod['sku'] && 
-        i['codigo_status_produto_pedido'] == 1
-      ).firstOrNull;
+      // Busca o produto pelo código de barras bipado
+      final prod = await _pedidoRepo.getProdutoByBarcode(barcode);
+      debugPrint('Produto encontrado: ${prod?['sku']}');
 
-      if (itemPendente != null) {
-        // SUCESSO: O produto bipado pertence a um item pendente
-        setState(() => _feedbackColor = Colors.green);
-
-        await _pedidoRepo.updateItemStatus(
-          widget.pedidoId, 
-          itemPendente['codigo_produto'], 
-          itemPendente['codigo_produto_pedido'], 
-          2 // Status "Na caixa"
-        );
-
-        // Verifica se essa SKU específica acabou de ser concluída
-        final key = "${itemPendente['sku']}-${itemPendente['localizacao']}-${itemPendente['cor']}-${itemPendente['tamanho']}";
-        final group = _groupedItems[key]!;
-        final itensRestantesNoGrupo = group.where((i) => 
-          i['codigo_produto_pedido'] != itemPendente['codigo_produto_pedido'] &&
+      if (prod != null) {
+        // Encontrar o primeiro item pendente com esse SKU na lista geral do pedido
+        final itemPendente = _allOrderItems.where((i) => 
+          i['sku'] == prod['sku'] && 
           i['codigo_status_produto_pedido'] == 1
-        ).length;
+        ).firstOrNull;
 
-        if (itensRestantesNoGrupo == 0) {
-          await _playBeep(true, completed: true);
+        if (itemPendente != null) {
+          debugPrint('Item pendente encontrado: ID ${itemPendente['codigo_produto_pedido']}');
+          // SUCESSO: O produto bipado pertence a um item pendente
+          setState(() => _feedbackColor = Colors.green);
+
+          // ATUALIZAÇÃO LOCAL IMEDIATA
+          itemPendente['codigo_status_produto_pedido'] = 2;
+
+          debugPrint('Atualizando banco de dados...');
+          await _pedidoRepo.updateItemStatus(
+            widget.pedidoId, 
+            itemPendente['codigo_produto'], 
+            itemPendente['codigo_produto_pedido'], 
+            2 // Status "Na caixa"
+          );
+          debugPrint('Banco de dados atualizado.');
+
+          // Verifica se essa SKU específica acabou de ser concluída
+          final key = "${itemPendente['sku']}-${itemPendente['localizacao']}-${itemPendente['cor']}-${itemPendente['tamanho']}";
+          final group = _groupedItems[key]!;
+          
+          final itensRestantesNoGrupo = group.where((i) => 
+            i['codigo_status_produto_pedido'] == 1
+          ).length;
+
+          debugPrint('Itens restantes no grupo ($key): $itensRestantesNoGrupo');
+
+          debugPrint('Iniciando bipe...');
+          if (itensRestantesNoGrupo == 0) {
+            await _playBeep(true, completed: true);
+          } else {
+            await _playBeep(true);
+          }
+          debugPrint('Bipe finalizado.');
+
+          await Future.delayed(const Duration(milliseconds: 300));
+          
+          debugPrint('Recarregando itens...');
+          await _loadItems();
+          debugPrint('Itens recarregados.');
+          
+          if (mounted) {
+            setState(() {
+              _feedbackColor = Colors.white;
+              _message = '';
+            });
+          }
         } else {
-          await _playBeep(true);
+          debugPrint('SKU sem saldo pendente.');
+          _showError('SKU não pertence à caixa');
         }
-
-        await Future.delayed(const Duration(milliseconds: 300));
-        _loadItems();
-        setState(() => _feedbackColor = Colors.white);
       } else {
-        // SKU existe mas não tem saldo pendente no pedido
-        _showError('SKU sem saldo ou já coletada');
+        debugPrint('Produto não encontrado para o barcode: $barcode');
+        _showError('SKU não pertence à caixa');
       }
-    } else {
-      _showError('Produto não encontrado');
+    } catch (e, stack) {
+      debugPrint('--- ERRO CRÍTICO NO PICKING ---');
+      debugPrint('Erro: $e');
+      debugPrint('Stack: $stack');
+      _showError('Erro interno: $e');
     }
   }
 
@@ -339,7 +371,7 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          _showError('Funcionalidade de pulo não implementada');
+                          _showError('**SKU PULADO**');
                         },
                         icon: const Icon(Icons.skip_next),
                         label: const Text('PULAR SKU'),
