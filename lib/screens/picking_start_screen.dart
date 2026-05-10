@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'scanner_screen.dart';
 import '../repositories/pedido_repository.dart';
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
 import 'picking_execution_screen.dart';
 import '../models/usuario.dart';
 import '../models/pedido.dart';
@@ -16,6 +18,7 @@ class PickingStartScreen extends StatefulWidget {
 
 class PickingStartScreenState extends State<PickingStartScreen> {
   final PedidoRepository _pedidoRepo = PedidoRepository();
+  final LogRepository _logRepo = LogRepository();
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
@@ -37,6 +40,11 @@ class PickingStartScreenState extends State<PickingStartScreen> {
         finalizadoEm: pedido.finalizadoEm,
       );
       await _pedidoRepo.update(pedidoAtualizado);
+      await _logRepo.insert(Log(
+        codigoUsuario: widget.usuario.codigoUsuario!,
+        acao: 'Tornou-se responsável pelo picking',
+        detalhes: 'ID Pedido: $pedidoId. Status alterado para Em Andamento.',
+      ));
     }
   }
 
@@ -93,10 +101,19 @@ class PickingStartScreenState extends State<PickingStartScreen> {
           }
 
           if (mounted) {
+            await _logRepo.insert(Log(
+              codigoUsuario: widget.usuario.codigoUsuario!,
+              acao: 'Abriu papeleta de picking',
+              detalhes: 'Papeleta: $barcode, Pedido: ${pedido['codigo_pedido']}',
+            ));
+
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => PickingExecutionScreen(pedidoId: pedido['codigo_pedido']),
+                builder: (context) => PickingExecutionScreen(
+                  pedidoId: pedido['codigo_pedido'],
+                  usuarioLogado: widget.usuario,
+                ),
               ),
             );
           }

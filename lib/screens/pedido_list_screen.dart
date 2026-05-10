@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../repositories/pedido_repository.dart';
+import '../models/usuario.dart';
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
 import 'pedido_form_screen.dart';
 
 class PedidoListScreen extends StatefulWidget {
-  const PedidoListScreen({super.key});
+  final Usuario usuarioLogado;
+  const PedidoListScreen({super.key, required this.usuarioLogado});
 
   @override
   State<PedidoListScreen> createState() => _PedidoListScreenState();
@@ -11,6 +15,7 @@ class PedidoListScreen extends StatefulWidget {
 
 class _PedidoListScreenState extends State<PedidoListScreen> {
   final PedidoRepository _repository = PedidoRepository();
+  final LogRepository _logRepo = LogRepository();
   List<Map<String, dynamic>> _allPedidos = [];
   List<Map<String, dynamic>> _filteredPedidos = [];
   List<Map<String, dynamic>> _statuses = [];
@@ -26,6 +31,15 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   void initState() {
     super.initState();
     _refreshList();
+    _registrarAcesso();
+  }
+
+  Future<void> _registrarAcesso() async {
+    await _logRepo.insert(Log(
+      codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+      acao: 'Acessou lista de pedidos',
+      detalhes: 'O usuário visualizou a listagem completa de pedidos.',
+    ));
   }
 
   Future<void> _refreshList() async {
@@ -181,7 +195,10 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => PedidoFormScreen(pedidoId: pedido['codigo_pedido']),
+                                    builder: (context) => PedidoFormScreen(
+                                      pedidoId: pedido['codigo_pedido'],
+                                      usuarioLogado: widget.usuarioLogado,
+                                    ),
                                   ),
                                 );
                                 if (result == true) _refreshList();
@@ -197,7 +214,9 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => PedidoFormScreen()),
+            MaterialPageRoute(
+              builder: (context) => PedidoFormScreen(usuarioLogado: widget.usuarioLogado),
+            ),
           );
           if (result == true) _refreshList();
         },

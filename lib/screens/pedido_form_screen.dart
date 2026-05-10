@@ -4,12 +4,16 @@ import '../models/pedido.dart';
 import '../repositories/pedido_repository.dart';
 import '../repositories/produto_repository.dart';
 import '../repositories/usuario_repository.dart';
+import '../models/usuario.dart';
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
 import 'scanner_screen.dart';
 
 class PedidoFormScreen extends StatefulWidget {
   final int? pedidoId;
+  final Usuario usuarioLogado;
 
-  const PedidoFormScreen({super.key, this.pedidoId});
+  const PedidoFormScreen({super.key, this.pedidoId, required this.usuarioLogado});
 
   @override
   State<PedidoFormScreen> createState() => _PedidoFormScreenState();
@@ -19,6 +23,7 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
   final PedidoRepository _pedidoRepo = PedidoRepository();
   final ProdutoRepository _produtoRepo = ProdutoRepository();
   final UsuarioRepository _usuarioRepo = UsuarioRepository();
+  final LogRepository _logRepo = LogRepository();
   final _caixaBarraController = TextEditingController();
   
   List<Map<String, dynamic>> _itens = [];
@@ -128,6 +133,12 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       final id = await _pedidoRepo.insert(pedido);
       setState(() => _currentPedidoId = id);
       
+      await _logRepo.insert(Log(
+        codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+        acao: 'Criou novo pedido',
+        detalhes: 'ID: $id',
+      ));
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido criado!')));
         if (fecharTela) {
@@ -137,6 +148,11 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
       }
     } else {
       await _pedidoRepo.update(pedido);
+      await _logRepo.insert(Log(
+        codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+        acao: 'Editou pedido',
+        detalhes: 'ID: ${widget.pedidoId}',
+      ));
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido atualizado!')));
@@ -169,6 +185,11 @@ class _PedidoFormScreenState extends State<PedidoFormScreen> {
 
     if (confirm == true && _currentPedidoId != null) {
       await _pedidoRepo.delete(_currentPedidoId!);
+      await _logRepo.insert(Log(
+        codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+        acao: 'Apagou pedido',
+        detalhes: 'ID: ${_currentPedidoId}',
+      ));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido excluído com sucesso!')));
         Navigator.pop(context, true);

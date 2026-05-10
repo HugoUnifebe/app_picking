@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import '../models/produto.dart';
 import '../repositories/produto_repository.dart';
+import '../models/usuario.dart';
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
 import 'scanner_screen.dart';
 
 class ProdutoFormScreen extends StatefulWidget {
   final Produto? produto;
+  final Usuario usuarioLogado;
 
-  const ProdutoFormScreen({super.key, this.produto});
+  const ProdutoFormScreen({super.key, this.produto, required this.usuarioLogado});
 
   @override
   State<ProdutoFormScreen> createState() => _ProdutoFormScreenState();
@@ -24,6 +28,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
   final _localizacaoController = TextEditingController();
 
   final ProdutoRepository _repository = ProdutoRepository();
+  final LogRepository _logRepo = LogRepository();
 
   @override
   void initState() {
@@ -68,11 +73,47 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
       );
 
       if (widget.produto == null) {
-        await _repository.insert(produto);
+        final id = await _repository.insert(produto);
+        await _logRepo.insert(Log(
+          codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+          acao: 'Criou novo produto',
+          detalhes: 'ID: $id, Nome: ${produto.nomeProduto}',
+        ));
       } else {
         await _repository.update(produto);
+        await _logRepo.insert(Log(
+          codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+          acao: 'Editou produto',
+          detalhes: 'ID: ${widget.produto!.codigoProduto}, Nome: ${produto.nomeProduto}',
+        ));
       }
 
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    }
+  }
+
+  Future<void> _excluir() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir Produto'),
+        content: Text('Deseja realmente excluir o produto "${_nomeController.text}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCELAR')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('EXCLUIR', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true && widget.produto?.codigoProduto != null) {
+      await _repository.delete(widget.produto!.codigoProduto!);
+      await _logRepo.insert(Log(
+        codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+        acao: 'Apagou produto',
+        detalhes: 'ID: ${widget.produto!.codigoProduto}, Nome: ${_nomeController.text}',
+      ));
       if (mounted) {
         Navigator.pop(context, true);
       }
@@ -84,6 +125,13 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.produto == null ? 'Novo Produto' : 'Editar Produto'),
+        actions: [
+          if (widget.produto != null)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: _excluir,
+            )
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

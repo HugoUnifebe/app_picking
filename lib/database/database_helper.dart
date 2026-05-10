@@ -72,6 +72,9 @@ class DatabaseHelper {
       CREATE TABLE logs (
         codigo_log INTEGER PRIMARY KEY AUTOINCREMENT,
         codigo_usuario INTEGER,
+        acao TEXT,
+        detalhes TEXT,
+        criado_em TEXT,
         FOREIGN KEY (codigo_usuario) REFERENCES usuario(codigo_usuario)
       )
     ''');

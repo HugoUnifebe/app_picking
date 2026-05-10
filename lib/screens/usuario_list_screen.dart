@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/usuario.dart';
 import '../repositories/usuario_repository.dart';
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
 import 'usuario_form_screen.dart';
 import 'scanner_screen.dart';
 
 class UsuarioListScreen extends StatefulWidget {
-  const UsuarioListScreen({super.key});
+  final Usuario usuarioLogado;
+  const UsuarioListScreen({super.key, required this.usuarioLogado});
 
   @override
   State<UsuarioListScreen> createState() => _UsuarioListScreenState();
@@ -13,6 +16,7 @@ class UsuarioListScreen extends StatefulWidget {
 
 class _UsuarioListScreenState extends State<UsuarioListScreen> {
   final UsuarioRepository _repository = UsuarioRepository();
+  final LogRepository _logRepo = LogRepository();
   List<Map<String, dynamic>> _allUsuarios = [];
   List<Map<String, dynamic>> _filteredUsuarios = [];
   bool _isLoading = true;
@@ -24,6 +28,15 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
   void initState() {
     super.initState();
     _refreshList();
+    _registrarAcesso();
+  }
+
+  Future<void> _registrarAcesso() async {
+    await _logRepo.insert(Log(
+      codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+      acao: 'Acessou lista de usuários',
+      detalhes: 'O usuário visualizou a listagem completa de usuários.',
+    ));
   }
 
   Future<void> _refreshList() async {
@@ -122,7 +135,10 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => UsuarioFormScreen(usuarioId: user['codigo_usuario']),
+                                    builder: (context) => UsuarioFormScreen(
+                                      usuarioId: user['codigo_usuario'],
+                                      usuarioLogado: widget.usuarioLogado,
+                                    ),
                                   ),
                                 );
                                 if (result == true) _refreshList();
@@ -138,7 +154,9 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const UsuarioFormScreen()),
+            MaterialPageRoute(
+              builder: (context) => UsuarioFormScreen(usuarioLogado: widget.usuarioLogado),
+            ),
           );
           if (result == true) _refreshList();
         },

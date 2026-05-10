@@ -71,7 +71,7 @@ class _MainScreenState extends State<MainScreen> {
         usuario: _usuarioAtual,
         onSwitchUser: _usuarioAtual.codigoTipo == 1 ? _trocarParaOperador : null,
       ),
-      if (_usuarioAtual.codigoTipo == 1) const CadastrosMenuScreen(),
+      if (_usuarioAtual.codigoTipo == 1) CadastrosMenuScreen(usuarioLogado: _usuarioAtual),
       PickingStartScreen(usuario: _usuarioAtual),
     ];
 

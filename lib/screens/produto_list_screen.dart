@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/produto.dart';
 import '../repositories/produto_repository.dart';
+import '../models/usuario.dart';
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
 import 'produto_form_screen.dart';
 
 class ProdutoListScreen extends StatefulWidget {
-  const ProdutoListScreen({super.key});
+  final Usuario usuarioLogado;
+  const ProdutoListScreen({super.key, required this.usuarioLogado});
 
   @override
   State<ProdutoListScreen> createState() => _ProdutoListScreenState();
@@ -12,6 +16,7 @@ class ProdutoListScreen extends StatefulWidget {
 
 class _ProdutoListScreenState extends State<ProdutoListScreen> {
   final ProdutoRepository _repository = ProdutoRepository();
+  final LogRepository _logRepo = LogRepository();
   List<Produto> _allProdutos = [];
   List<Produto> _filteredProdutos = [];
   bool _isLoading = true;
@@ -23,6 +28,15 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
   void initState() {
     super.initState();
     _refreshList();
+    _registrarAcesso();
+  }
+
+  Future<void> _registrarAcesso() async {
+    await _logRepo.insert(Log(
+      codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+      acao: 'Acessou lista de produtos',
+      detalhes: 'O usuário visualizou a listagem completa de produtos.',
+    ));
   }
 
   Future<void> _refreshList() async {
@@ -67,6 +81,11 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
 
     if (confirm == true && produto.codigoProduto != null) {
       await _repository.delete(produto.codigoProduto!);
+      await _logRepo.insert(Log(
+        codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+        acao: 'Apagou produto',
+        detalhes: 'ID: ${produto.codigoProduto}, Nome: ${produto.nomeProduto}',
+      ));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Produto excluído com sucesso!')),
@@ -129,7 +148,10 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
                                       final result = await Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => ProdutoFormScreen(produto: produto),
+                                          builder: (context) => ProdutoFormScreen(
+                                            produto: produto,
+                                            usuarioLogado: widget.usuarioLogado,
+                                          ),
                                         ),
                                       );
                                       if (result == true) _refreshList();
@@ -152,7 +174,9 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ProdutoFormScreen()),
+            MaterialPageRoute(
+              builder: (context) => ProdutoFormScreen(usuarioLogado: widget.usuarioLogado),
+            ),
           );
           if (result == true) _refreshList();
         },

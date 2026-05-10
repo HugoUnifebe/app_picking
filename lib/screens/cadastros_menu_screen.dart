@@ -3,8 +3,12 @@ import 'produto_list_screen.dart';
 import 'pedido_list_screen.dart';
 import 'usuario_list_screen.dart';
 
+import '../models/usuario.dart';
+import 'log_list_screen.dart';
+
 class CadastrosMenuScreen extends StatelessWidget {
-  const CadastrosMenuScreen({super.key});
+  final Usuario usuarioLogado;
+  const CadastrosMenuScreen({super.key, required this.usuarioLogado});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +25,7 @@ class CadastrosMenuScreen extends StatelessWidget {
             title: 'Usuários',
             subtitle: 'Gerenciar permissões e crachás',
             color: Colors.purple,
-            destination: const UsuarioListScreen(),
+            destination: UsuarioListScreen(usuarioLogado: usuarioLogado),
           ),
           const SizedBox(height: 12),
           _buildMenuTile(
@@ -30,7 +34,7 @@ class CadastrosMenuScreen extends StatelessWidget {
             title: 'Produtos',
             subtitle: 'Gerenciar catálogo de produtos e EANs',
             color: Colors.blue,
-            destination: const ProdutoListScreen(),
+            destination: ProdutoListScreen(usuarioLogado: usuarioLogado),
           ),
           const SizedBox(height: 12),
           _buildMenuTile(
@@ -39,7 +43,7 @@ class CadastrosMenuScreen extends StatelessWidget {
             title: 'Pedidos',
             subtitle: 'Visualizar e criar novos pedidos de picking',
             color: Colors.green,
-            destination: const PedidoListScreen(),
+            destination: PedidoListScreen(usuarioLogado: usuarioLogado),
           ),
           const SizedBox(height: 12),
           _buildMenuTile(
@@ -48,7 +52,7 @@ class CadastrosMenuScreen extends StatelessWidget {
             title: 'Ver Logs',
             subtitle: 'Histórico de atividades do sistema',
             color: Colors.red,
-            destination: const PlaceholderScreen(title: 'Logs'),
+            destination: LogListScreen(usuarioLogado: usuarioLogado),
           ),
         ],
       ),

@@ -4,9 +4,14 @@ import '../repositories/pedido_repository.dart';
 import 'scanner_screen.dart';
 import '../models/pedido.dart';
 
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
+import '../models/usuario.dart';
+
 class PickingExecutionScreen extends StatefulWidget {
   final int pedidoId;
-  const PickingExecutionScreen({super.key, required this.pedidoId});
+  final Usuario usuarioLogado;
+  const PickingExecutionScreen({super.key, required this.pedidoId, required this.usuarioLogado});
 
   @override
   State<PickingExecutionScreen> createState() => _PickingExecutionScreenState();
@@ -14,6 +19,7 @@ class PickingExecutionScreen extends StatefulWidget {
 
 class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
   final PedidoRepository _pedidoRepo = PedidoRepository();
+  final LogRepository _logRepo = LogRepository();
   final AudioPlayer _audioPlayer = AudioPlayer();
   
   List<Map<String, dynamic>> _allOrderItems = [];
@@ -147,6 +153,13 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
             itemPendente['codigo_produto_pedido'], 
             2 // Status "Na caixa"
           );
+          
+          await _logRepo.insert(Log(
+            codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+            acao: 'Bipou produto no picking',
+            detalhes: 'Pedido: ${widget.pedidoId}, SKU: ${prod['sku']}, Barras: $barcode',
+          ));
+
           debugPrint('Banco de dados atualizado.');
 
           // Verifica se essa SKU específica acabou de ser concluída
@@ -233,6 +246,12 @@ class _PickingExecutionScreenState extends State<PickingExecutionScreen> {
                 );
                 await _pedidoRepo.update(pedidoFinalizado);
               }
+              
+              await _logRepo.insert(Log(
+                codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+                acao: completa ? 'Finalizou picking total' : 'Finalizou picking parcial',
+                detalhes: 'Pedido: ${widget.pedidoId}',
+              ));
               
               if (mounted) {
                 Navigator.pop(context); // Fecha dialog

@@ -69,6 +69,11 @@ class UsuarioRepository {
     );
   }
 
+  Future<int> delete(int id) async {
+    final db = await _dbHelper.database;
+    return await db.delete('usuario', where: 'codigo_usuario = ?', whereArgs: [id]);
+  }
+
   Future<List<Map<String, dynamic>>> getTipos() async {
     final db = await _dbHelper.database;
     return await db.query('usuario_tipo');

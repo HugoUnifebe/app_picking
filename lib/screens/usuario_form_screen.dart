@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/usuario.dart';
 import '../repositories/usuario_repository.dart';
+import '../repositories/log_repository.dart';
+import '../models/log.dart';
 import 'scanner_screen.dart';
 
 class UsuarioFormScreen extends StatefulWidget {
   final int? usuarioId;
+  final Usuario usuarioLogado;
 
-  const UsuarioFormScreen({super.key, this.usuarioId});
+  const UsuarioFormScreen({super.key, this.usuarioId, required this.usuarioLogado});
 
   @override
   State<UsuarioFormScreen> createState() => _UsuarioFormScreenState();
@@ -15,6 +18,7 @@ class UsuarioFormScreen extends StatefulWidget {
 class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final UsuarioRepository _repository = UsuarioRepository();
+  final LogRepository _logRepo = LogRepository();
   
   final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
@@ -62,11 +66,47 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
       );
 
       if (widget.usuarioId == null) {
-        await _repository.insert(user);
+        final id = await _repository.insert(user);
+        await _logRepo.insert(Log(
+          codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+          acao: 'Criou novo usuário',
+          detalhes: 'ID: $id, Nome: ${user.nome}',
+        ));
       } else {
         await _repository.update(user);
+        await _logRepo.insert(Log(
+          codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+          acao: 'Editou usuário',
+          detalhes: 'ID: ${widget.usuarioId}, Nome: ${user.nome}',
+        ));
       }
 
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    }
+  }
+
+  Future<void> _excluir() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir Usuário'),
+        content: const Text('Deseja realmente excluir este usuário? Esta ação não pode ser desfeita.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCELAR')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('EXCLUIR', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true && widget.usuarioId != null) {
+      await _repository.delete(widget.usuarioId!);
+      await _logRepo.insert(Log(
+        codigoUsuario: widget.usuarioLogado.codigoUsuario!,
+        acao: 'Apagou usuário',
+        detalhes: 'ID: ${widget.usuarioId}, Nome: ${_nomeController.text}',
+      ));
       if (mounted) {
         Navigator.pop(context, true);
       }
@@ -78,6 +118,13 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.usuarioId == null ? 'Novo Usuário' : 'Editar Usuário'),
+        actions: [
+          if (widget.usuarioId != null)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: _excluir,
+            )
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
