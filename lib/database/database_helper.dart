@@ -19,23 +19,26 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'picking_database.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.update(
-        'usuario',
-        {
-          'codigo_barra_usuario': '1234567899992'
-        },
-        where: 'codigo_usuario = ?',
-        whereArgs: [1],
-      );
-    }
+
+    await db.execute('DROP TABLE IF EXISTS produto_pedido');
+    await db.execute('DROP TABLE IF EXISTS produto');
+    await db.execute('DROP TABLE IF EXISTS status_produto_pedido');
+    await db.execute('DROP TABLE IF EXISTS pedido');
+    await db.execute('DROP TABLE IF EXISTS status_pedido');
+    await db.execute('DROP TABLE IF EXISTS caixa');
+    await db.execute('DROP TABLE IF EXISTS status_caixa');
+    await db.execute('DROP TABLE IF EXISTS logs');
+    await db.execute('DROP TABLE IF EXISTS usuario');
+    await db.execute('DROP TABLE IF EXISTS usuario_tipo');
+
+    await _onCreate(db, newVersion);
   }
 
   Future _onCreate(Database db, int version) async {
